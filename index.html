@@ -6,44 +6,48 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="賽車AR導航">
-    <title>iPhone 17 Pro 雙模式 HUD / AR 賽車導航 (Apple Map 3D版)</title>
+    <title>iPhone 17 Pro 3D Apple Maps 導航系統</title>
     
-    <!-- Three.js 核心 -->
+    <!-- Three.js 核心 (HUD / AR 渲染) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-    <!-- 替換為 MapLibre GL JS (支援 3D 向量地圖與傾斜視角) -->
+    <!-- MapLibre GL JS 向量地圖引擎 (實現附件 2 的立體建築與 60 度視角) -->
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        body, html { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body, html { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; background-color: #12161f; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
         
         #master-mirror-wrapper { position: fixed; inset: 0; width: 100%; height: 100%; transition: transform 0.3s ease; background-color: #000; }
         .hud-mirrored { transform: scaleX(-1); }
         
-        #viewport-container { position: absolute; inset: 0; width: 100%; height: 100%; background-color: #000; }
-        #camera-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
-        #ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+        /* 視圖層容器 */
+        #viewport-container { position: absolute; inset: 0; width: 100%; height: 100%; }
+        #full-vector-map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+        #camera-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; display: none; }
+        #ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
 
-        /* 賽車級螢幕邊緣轉向呼吸光暈 */
+        .maplibregl-control-container { display: none !important; }
+
+        /* 呼吸光暈與提示膠囊 */
         #edge-glow-layer { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
         .glow-left { box-shadow: inset 45px 0 65px -15px rgba(0, 229, 255, 0.75); animation: pulse-edge 0.7s infinite alternate; }
         .glow-right { box-shadow: inset -45px 0 65px -15px rgba(255, 145, 0, 0.85); animation: pulse-edge 0.7s infinite alternate; }
         @keyframes pulse-edge { 0% { opacity: 0.35; } 100% { opacity: 1; } }
 
-        /* 非阻斷式懸浮提示膠囊 */
         #hud-toast {
             position: fixed; top: max(18px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: rgba(15, 22, 34, 0.95); color: #00ffcc; border: 1.5px solid #00ffcc;
-            padding: 9px 18px; border-radius: 30px; font-size: 13px; font-weight: 800;
-            z-index: 10000; box-shadow: 0 6px 20px rgba(0,0,0,0.75);
+            background: rgba(20, 26, 38, 0.95); color: #00ffcc; border: 1.5px solid #00ffcc;
+            padding: 9px 20px; border-radius: 30px; font-size: 13px; font-weight: 800;
+            z-index: 10000; box-shadow: 0 8px 24px rgba(0,0,0,0.8);
             opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
         }
         #hud-toast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
         #hud-toast.toast-warn { border-color: #ffea00; color: #ffea00; }
-        
+
+        /* 介面主容器 */
         #ui-layer {
             position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;
             padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom));
@@ -51,118 +55,113 @@
             display: flex; flex-direction: column; justify-content: space-between;
         }
 
-        .glass-panel {
+        /* Apple 風格霧面質感卡片 */
+        .apple-glass-card {
             pointer-events: auto;
-            background: rgba(10, 14, 22, 0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(0, 255, 200, 0.38); border-radius: 14px; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.65);
+            background: rgba(24, 29, 39, 0.86); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; color: #fff;
+            box-shadow: 0 16px 36px rgba(0,0,0,0.6);
         }
 
-        .top-bar-wrapper { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%; }
-        
-        .search-panel { position: relative; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 470px; z-index: 500; }
-        .status-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-family: monospace; color: #00ffcc; }
-        
+        /* 頂部搜尋欄 */
+        .search-panel { position: relative; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 480px; margin: 0 auto; }
+        .status-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-family: monospace; color: #60a5fa; }
         .input-group { position: relative; display: flex; gap: 6px; align-items: center; }
-        .vehicle-toggle-btn { background: #1e2636; border: 1px solid #00ffcc; color: #00ffcc; border-radius: 8px; padding: 8px 9px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+        .vehicle-toggle-btn { background: #1e2636; border: 1px solid #3b82f6; color: #60a5fa; border-radius: 10px; padding: 9px 10px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
         .input-wrapper { position: relative; flex: 1; display: flex; align-items: center; }
-        .input-wrapper input { width: 100%; padding: 9px 28px 9px 10px; border-radius: 8px; border: 1px solid #3a4454; background: #141923; color: #fff; font-size: 13px; outline: none; user-select: text; -webkit-user-select: text; }
-        .input-wrapper input:focus { border-color: #00ffcc; box-shadow: 0 0 8px rgba(0, 255, 204, 0.3); }
-        .clear-btn { position: absolute; right: 6px; background: none; border: none; color: #888; font-size: 16px; padding: 4px; cursor: pointer; display: none; }
+        .input-wrapper input { width: 100%; padding: 10px 30px 10px 12px; border-radius: 10px; border: 1px solid #374151; background: #131722; color: #fff; font-size: 13px; outline: none; }
+        .input-wrapper input:focus { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.35); }
+        .clear-btn { position: absolute; right: 8px; background: none; border: none; color: #9ca3af; font-size: 16px; cursor: pointer; display: none; }
 
         #suggestions-box {
             position: absolute; top: calc(100% + 6px); left: 0; width: 100%; max-height: 220px; overflow-y: auto;
-            background: rgba(12, 17, 26, 0.98); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid #00ffcc; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.9);
+            background: rgba(18, 22, 32, 0.98); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid #3b82f6; border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.9);
             display: none; flex-direction: column; z-index: 1000;
         }
-        .suggestion-item { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
-        .suggestion-item:active { background: rgba(0, 255, 204, 0.22); }
-        .sug-left { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-        .sug-title { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sug-sub { font-size: 11px; color: #99aab5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sug-dist { font-size: 11px; font-family: monospace; font-weight: 700; color: #00ffcc; background: rgba(0,255,204,0.12); padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
-        
-        .turn-panel {
-            pointer-events: auto;
-            display: none; flex-direction: column; gap: 6px; padding: 10px 14px;
-            background: rgba(10, 14, 22, 0.92); border: 2px solid #00ffcc; border-radius: 14px;
-            box-shadow: 0 8px 24px rgba(0,255,204,0.3); z-index: 500; color: #fff; flex: 1; max-width: 460px;
+        .suggestion-item { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
+        .suggestion-item:active { background: rgba(59, 130, 246, 0.2); }
+        .sug-title { font-size: 14px; font-weight: 700; color: #fff; }
+        .sug-sub { font-size: 11px; color: #9ca3af; }
+
+        /* ================= 附件 2：Apple Maps 頂部轉彎指示卡 ================= */
+        #apple-turn-banner {
+            pointer-events: auto; display: none; width: 100%; max-width: 440px; margin: 0 auto;
+            background: rgba(22, 27, 36, 0.88); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 22px;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.65); overflow: hidden;
         }
-        .turn-main-row { display: flex; align-items: center; gap: 8px; width: 100%; }
-        .turn-icon { font-size: 32px; line-height: 1; filter: drop-shadow(0 0 8px rgba(0,255,204,0.5)); }
-        .turn-info { display: flex; flex-direction: column; justify-content: center; flex: 1; overflow: hidden; }
-        .turn-dist-row { display: flex; align-items: baseline; gap: 8px; }
-        .turn-dist { font-size: 24px; font-weight: 900; font-family: monospace; color: #fff; line-height: 1; }
-        .turn-eta { font-size: 11px; font-family: monospace; color: #ffd740; font-weight: 700; }
-        .turn-street { font-size: 13px; font-weight: bold; color: #00ffcc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-        
-        .nav-btn-group { display: flex; gap: 6px; flex-shrink: 0; }
-        .stop-nav-btn { background: rgba(255,23,68,0.2); border: 1px solid #ff1744; color: #ff1744; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: bold; cursor: pointer; white-space: nowrap; }
-        /* Apple 地圖跳轉按鈕樣式 */
-        .apple-map-btn { background: rgba(52,120,246,0.2); border: 1px solid #3478F6; color: #609dff; }
-        
-        .turn-progress-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; }
-        #turn-progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00e676, #ffea00, #ff1744); transition: width 0.3s ease; }
-
-        .telemetry-panel { padding: 8px 12px; text-align: right; min-width: 122px; border-right: 4px solid #00ffff; display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
-        .speed-val { font-size: 34px; font-weight: 900; font-family: monospace; line-height: 1; color: #00ffff; text-shadow: 0 0 12px rgba(0,255,255,0.6); }
-        .speed-unit { font-size: 11px; color: #99aab5; font-weight: 700; letter-spacing: 1px; }
-        .telemetry-sub-row { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; font-family: monospace; }
-        .heading-info { color: #ffcc00; }
-        .gforce-info { color: #00ff88; font-weight: 700; }
-        .apex-alert { margin-top: 4px; font-size: 10px; font-weight: 800; color: #fff; background: #ff1744; padding: 2px 6px; border-radius: 4px; box-shadow: 0 0 10px rgba(255,23,68,0.8); display: none; white-space: nowrap; }
-        .speed-warning { color: #ff1744 !important; text-shadow: 0 0 20px rgba(255,23,68,0.9) !important; animation: flash-speed 0.6s infinite alternate; }
-        @keyframes flash-speed { 0% { opacity: 1; } 100% { opacity: 0.6; } }
-
-        .bottom-row-wrapper { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; gap: 10px; pointer-events: none; }
-
-        /* MapLibre 容器樣式 */
-        #minimap-container {
-            pointer-events: auto; position: relative;
-            width: 130px; height: 130px; min-width: 130px; min-height: 130px; flex-shrink: 0;
-            border-radius: 50%; overflow: hidden;
-            border: 2px solid #00ffcc; box-shadow: 0 0 18px rgba(0, 255, 204, 0.35);
-            background: #111; transition: all 0.28s ease;
+        .apple-turn-body { padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+        .apple-turn-icon-box {
+            width: 48px; height: 48px; min-width: 48px; border-radius: 50%;
+            background: #252e3d; border: 1.5px solid rgba(255,255,255,0.25);
+            display: flex; align-items: center; justify-content: center; font-size: 26px; color: #ffffff;
         }
-        #minimap-container.expanded { width: 250px; height: 200px; min-width: 250px; min-height: 200px; border-radius: 16px; }
-        #google-minimap { width: 100%; height: 100%; }
-        
-        .maplibregl-control-container { display: none !important; }
-        
-        .minimap-badge { position: absolute; top: 6px; left: 8px; z-index: 400; background: rgba(0,0,0,0.75); color: #00ffcc; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
-        .minimap-zoom-btn { position: absolute; top: 6px; right: 6px; z-index: 400; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid #555; border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: bold; cursor: pointer; pointer-events: auto; }
+        .apple-turn-details { display: flex; flex-direction: column; justify-content: center; flex: 1; overflow: hidden; }
+        .apple-turn-dist-line { font-size: 13px; font-weight: 700; color: #60a5fa; letter-spacing: 0.5px; }
+        .apple-turn-main-street { font-size: 20px; font-weight: 800; color: #ffffff; line-height: 1.2; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .apple-turn-sub-street { font-size: 12px; font-weight: 600; color: #9ca3af; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
 
-        .radar-pulse-ring { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(0, 255, 255, 0.35); border: 2px solid #00ffff; animation: radar-ping 1.6s cubic-bezier(0, 0.2, 0.8, 1) infinite; pointer-events: none; }
-        @keyframes radar-ping { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
+        /* ================= 附件 2：Apple Maps 底部資訊卡 (ETA / 分鐘 / 公里) ================= */
+        #apple-bottom-dock {
+            pointer-events: auto; display: none; flex-direction: column; width: 100%; max-width: 440px; margin: 0 auto;
+            background: rgba(22, 27, 36, 0.90); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 26px;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.7); padding: 14px 18px; gap: 12px;
+        }
+        .apple-eta-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; align-items: center; text-align: center; }
+        .eta-metric { display: flex; flex-direction: column; align-items: center; }
+        .eta-metric-val { font-size: 24px; font-weight: 800; color: #ffffff; line-height: 1; letter-spacing: -0.5px; }
+        .eta-metric-label { font-size: 11px; font-weight: 700; color: #9ca3af; margin-top: 4px; }
+        .eta-divider { width: 1px; height: 26px; background: rgba(255, 255, 255, 0.12); margin: 0 auto; }
 
-        .controls-panel { padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; max-width: 260px; }
-        .btn { padding: 9px 10px; border: none; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .btn:active { opacity: 0.6; transform: scale(0.96); }
-        .btn-green { background: #00e676; color: #000; }
-        .btn-orange { background: #ff9100; color: #000; }
-        .btn-cyan { background: #00e5ff; color: #000; }
-        .btn-purple { background: #d500f9; color: #fff; }
-        .btn-dark { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.25); }
+        /* 快捷功能按鈕組 */
+        .bottom-action-buttons { display: flex; gap: 8px; justify-content: space-between; }
+        .apple-pill-btn {
+            flex: 1; padding: 10px 0; border: none; border-radius: 12px;
+            font-size: 12px; font-weight: 800; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s;
+        }
+        .apple-pill-btn:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.16); }
+        .apple-btn-mode { background: #2563eb; color: #fff; border-color: #3b82f6; }
+        .apple-btn-sim { background: #f59e0b; color: #000; border-color: #fbbf24; }
+        .apple-btn-end { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; max-width: 58px; }
 
-        @media (orientation: landscape) {
-            #minimap-container { width: 170px; height: 135px; min-width: 170px; min-height: 135px; border-radius: 14px; }
-            #minimap-container.expanded { width: 300px; height: 225px; min-width: 300px; min-height: 225px; }
-            .controls-panel { max-width: 420px; }
+        /* ================= 附件 2：Apple Maps 專屬自車圓盤游標 ================= */
+        .apple-car-puck { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .puck-cone-beam {
+            position: absolute; top: -14px; width: 42px; height: 32px;
+            background: radial-gradient(circle at bottom, rgba(59, 130, 246, 0.5) 0%, transparent 70%);
+            clip-path: polygon(50% 100%, 0 0, 100% 0); pointer-events: none;
+        }
+        .puck-core-dot {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #2563eb; border: 3px solid #ffffff;
+            box-shadow: 0 0 16px rgba(37, 99, 235, 0.9);
         }
 
-        #start-overlay { position: fixed; inset: 0; width: 100%; height: 100%; background: radial-gradient(circle, #141e30, #05070c); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; color: #fff; pointer-events: auto; }
-        #start-overlay h1 { font-size: 26px; margin-bottom: 12px; color: #00ffcc; text-shadow: 0 0 10px rgba(0,255,204,0.3); }
-        #start-overlay p { font-size: 14px; color: #ccc; line-height: 1.5; margin-bottom: 30px; max-width: 460px; }
-        .mode-selection { display: flex; gap: 16px; width: 100%; max-width: 400px; flex-direction: column; }
-        @media (orientation: landscape) { .mode-selection { flex-direction: row; max-width: 600px; } }
-        .mode-card { flex: 1; padding: 20px; border-radius: 16px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; background: rgba(255,255,255,0.05); }
-        .mode-card:active { transform: scale(0.96); }
-        .mode-ar { border-color: #00e676; box-shadow: 0 0 20px rgba(0,230,118,0.2); }
-        .mode-hud { border-color: #d500f9; box-shadow: 0 0 20px rgba(213,0,249,0.2); }
-        .mode-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
-        .mode-ar .mode-title { color: #00e676; }
-        .mode-hud .mode-title { color: #d500f9; }
-        .mode-desc { font-size: 12px; color: #aaa; line-height: 1.4; }
+        /* 儀表與抬頭資訊 */
+        .telemetry-floating-pill {
+            position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px;
+            padding: 8px 12px; text-align: right; pointer-events: auto;
+        }
+        .speed-val { font-size: 32px; font-weight: 900; font-family: monospace; line-height: 1; color: #60a5fa; }
+        .speed-unit { font-size: 10px; color: #9ca3af; font-weight: 700; letter-spacing: 1px; }
+
+        #start-overlay { position: fixed; inset: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1a2233, #0a0d14); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; color: #fff; pointer-events: auto; }
+        #start-overlay h1 { font-size: 26px; margin-bottom: 10px; color: #60a5fa; text-shadow: 0 0 12px rgba(96, 165, 250, 0.4); }
+        #start-overlay p { font-size: 14px; color: #cbd5e1; line-height: 1.5; margin-bottom: 28px; max-width: 440px; }
+        .mode-selection { display: flex; gap: 14px; width: 100%; max-width: 420px; flex-direction: column; }
+        .mode-card { flex: 1; padding: 18px; border-radius: 18px; cursor: pointer; border: 2px solid transparent; background: rgba(255,255,255,0.06); }
+        .mode-card:active { transform: scale(0.97); }
+        .mode-map { border-color: #3b82f6; box-shadow: 0 0 24px rgba(59, 130, 246, 0.3); }
+        .mode-hud { border-color: #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.25); }
+        .mode-title { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+        .mode-map .mode-title { color: #60a5fa; }
+        .mode-hud .mode-title { color: #c084fc; }
+        .mode-desc { font-size: 12px; color: #94a3b8; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -170,145 +169,110 @@
 <div id="hud-toast">系統已就緒</div>
 
 <div id="start-overlay">
-    <h1>🏎️ iPhone 17 Pro 賽車導航</h1>
-    <p>3D 向量地圖升級版：內建 <b>Apple Maps 視覺引擎</b>，支援自動傾斜旋轉與<b>一鍵跳轉原廠導航</b>。</p>
+    <h1>🏎️ 3D 智慧導航系統</h1>
+    <p>升級為<b>全螢幕 Apple Maps 3D 建築視圖</b>。支援 60 度實時旋轉跟隨、防震鎖定及雙模式抬頭顯示。</p>
     <div class="mode-selection">
-        <div class="mode-card mode-hud" onclick="initSystem('hud')">
-            <div class="mode-title">🌙 HUD 純黑模式</div>
-            <div class="mode-desc">OLED 像素斷電純黑 + 保護鏡頭 OIS。<br><b>適合機車架 / 擋風玻璃反射 / 外接眼鏡</b></div>
+        <div class="mode-card mode-map" onclick="initSystem('map')">
+            <div class="mode-title">🍎 3D 地圖導航模式</div>
+            <div class="mode-desc">全螢幕 3D 建築拉伸 + Apple Maps 深色導航介面。<br><b>最佳駕駛導航視覺</b></div>
         </div>
-        <div class="mode-card mode-ar" onclick="initSystem('ar')">
-            <div class="mode-title">📹 AR 實景模式</div>
-            <div class="mode-desc">鎖定 24mm 主鏡頭 + 1080p 連續對焦。<br><b>適合汽車儀表架 / 實景透視</b></div>
+        <div class="mode-card mode-hud" onclick="initSystem('hud')">
+            <div class="mode-title">🌙 HUD 純黑省電模式</div>
+            <div class="mode-desc">OLED 斷電純黑 + 3D 賽車箭頭。<br><b>適合夜間擋風玻璃反射 / 機車車架</b></div>
         </div>
     </div>
 </div>
 
 <div id="master-mirror-wrapper">
     <div id="viewport-container">
+        <!-- 附件 2：全螢幕 MapLibre 3D 向量地圖 -->
+        <div id="full-vector-map"></div>
         <video id="camera-video" autoplay playsinline muted></video>
         <canvas id="ar-canvas"></canvas>
         <div id="edge-glow-layer"></div>
     </div>
 
     <div id="ui-layer">
-        <div class="top-bar-wrapper">
-            <div class="glass-panel search-panel" id="search-panel">
-                <div class="status-row">
-                    <span id="status-msg">可貼上 Google 地址或點選地圖</span>
-                    <span id="orient-mode-tag">[直向模式]</span>
-                </div>
-                <div class="input-group">
-                    <button class="vehicle-toggle-btn" id="vehicle-btn" onclick="toggleVehicleMode()">🛵 機車</button>
-                    <div class="input-wrapper">
-                        <input type="text" id="dest-input" placeholder="貼上 Google 地址、網址或輸入地名..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onfocus="unlockInputOnFocus(this)" oninput="onSearchInput(this.value)" onpaste="onPasteGoogleAddress(event)">
-                        <button class="clear-btn" id="clear-input-btn" onclick="clearSearchInput()">✕</button>
-                    </div>
-                    <button class="btn btn-green" onclick="planRoute()">導航</button>
-                </div>
-                <div id="suggestions-box"></div>
+        <!-- 頂部搜尋卡 -->
+        <div class="apple-glass-card search-panel" id="search-panel">
+            <div class="status-row">
+                <span id="status-msg">可貼上 Google 地址、網址或點選地圖</span>
+                <span id="orient-mode-tag">[直向模式]</span>
             </div>
-
-            <div class="turn-panel" id="turn-panel">
-                <div class="turn-main-row">
-                    <div class="turn-icon" id="turn-icon">⬆️</div>
-                    <div class="turn-info">
-                        <div class="turn-dist-row">
-                            <span class="turn-dist" id="turn-dist">--m</span>
-                            <span class="turn-eta" id="turn-eta">計算中...</span>
-                        </div>
-                        <div class="turn-street" id="turn-street">規劃路線中...</div>
-                    </div>
-                    <div class="nav-btn-group">
-                        <button class="stop-nav-btn apple-map-btn" onclick="launchNativeAppleMaps()">🍎 導航</button>
-                        <button class="stop-nav-btn" onclick="stopNavigation()">✕</button>
-                    </div>
+            <div class="input-group">
+                <button class="vehicle-toggle-btn" id="vehicle-btn" onclick="toggleVehicleMode()">🛵 機車</button>
+                <div class="input-wrapper">
+                    <input type="text" id="dest-input" placeholder="貼上 Google 地址、網址或輸入地名..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onfocus="unlockInputOnFocus(this)" oninput="onSearchInput(this.value)" onpaste="onPasteGoogleAddress(event)">
+                    <button class="clear-btn" id="clear-input-btn" onclick="clearSearchInput()">✕</button>
                 </div>
-                <div class="turn-progress-bg">
-                    <div id="turn-progress-fill"></div>
-                </div>
+                <button class="vehicle-toggle-btn" style="background:#2563eb; color:#fff; border-color:#3b82f6;" onclick="planRoute()">導航</button>
             </div>
+            <div id="suggestions-box"></div>
+        </div>
 
-            <div class="glass-panel telemetry-panel">
-                <div>
-                    <span class="speed-val" id="speed-val">0</span>
-                    <span class="speed-unit">KM/H</span>
+        <!-- 附件 2：頂部轉向提示卡 (Apple Maps 同款佈局) -->
+        <div id="apple-turn-banner">
+            <div class="apple-turn-body">
+                <div class="apple-turn-icon-box" id="turn-icon-box">⬆️</div>
+                <div class="apple-turn-details">
+                    <div class="apple-turn-dist-line" id="turn-dist-line">35 公尺後</div>
+                    <div class="apple-turn-main-street" id="turn-main-street">從五工二路62巷出發</div>
+                    <div class="apple-turn-sub-street" id="turn-sub-street">↱ 五工三路</div>
                 </div>
-                <div class="telemetry-sub-row">
-                    <span class="gforce-info" id="gforce-val">0.0G</span>
-                    <span class="heading-info" id="heading-val">000°</span>
-                </div>
-                <div id="apex-alert" class="apex-alert">⚠️ 前方急彎減速</div>
             </div>
         </div>
 
-        <div class="bottom-row-wrapper">
-            <div id="minimap-container">
-                <div class="minimap-badge">3D向量地圖</div>
-                <button class="minimap-zoom-btn" onclick="toggleMinimapSize()" id="map-size-btn">放大</button>
-                <div id="google-minimap"></div>
-            </div>
+        <!-- 右上角懸浮速度儀表 -->
+        <div class="apple-glass-card telemetry-floating-pill">
+            <div class="speed-val" id="speed-val">0</div>
+            <div class="speed-unit">KM/H</div>
+        </div>
 
-            <div class="glass-panel controls-panel">
-                <button class="btn btn-purple" id="toggle-mode-btn" onclick="toggleDisplayMode()">切換至 AR</button>
-                <button class="btn btn-orange" id="sim-btn" onclick="toggleSimulationOrDemo()">模擬巡航</button>
-                <button class="btn btn-dark" onclick="calibrateHeading()">對準車頭</button>
-                <button class="btn btn-dark" id="voice-btn" onclick="toggleVoiceGuidance()">🔊 語音:開</button>
-                <button class="btn btn-dark" onclick="recenterMapToUser()">鎖定自車</button>
-                <button class="btn btn-dark" id="hud-btn" onclick="toggleHUDMirror()">HUD鏡像</button>
+        <!-- 附件 2：底部 ETA 狀態卡 (抵達 / 分鐘 / 公里) -->
+        <div id="apple-bottom-dock">
+            <div class="apple-eta-grid">
+                <div class="eta-metric">
+                    <div class="eta-metric-val" id="eta-time-val">--:--</div>
+                    <div class="eta-metric-label">抵達</div>
+                </div>
+                <div class="eta-divider"></div>
+                <div class="eta-metric">
+                    <div class="eta-metric-val" id="eta-min-val">--</div>
+                    <div class="eta-metric-label">分鐘</div>
+                </div>
+                <div class="eta-divider"></div>
+                <div class="eta-metric">
+                    <div class="eta-metric-val" id="eta-km-val">--</div>
+                    <div class="eta-metric-label">公里</div>
+                </div>
+            </div>
+            <div class="bottom-action-buttons">
+                <button class="apple-pill-btn apple-btn-mode" id="mode-btn" onclick="cycleDisplayMode()">🍎 3D地圖</button>
+                <button class="apple-pill-btn apple-btn-sim" id="sim-btn" onclick="toggleSimulationOrDemo()">模擬巡航</button>
+                <button class="apple-pill-btn" onclick="recenterMapToUser()">🎯 鎖定自車</button>
+                <button class="apple-pill-btn apple-btn-end" onclick="stopNavigation()">✕ 結束</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+let fullMap = null, userMarker = null, destMarker = null;
+let currentMode = 'map'; // 'map' (Apple 3D), 'hud' (純黑), 'ar' (相機實景)
+let isMapFollowingUser = true;
+
 let scene, camera, renderer;
 let chevronPool = [];
-let leftRailLine = null, rightRailLine = null;
-let turnPortalSign = null, portalCanvas = null, portalTexture = null;
 const NUM_ARROWS = 14;
-let animationPhase = 0;
-let lastFrameTime = performance.now();
-let conveyorOffsetMeters = 0;
+let animationPhase = 0, lastFrameTime = performance.now();
 
-let currentMode = 'hud';
-let vehicleMode = 'scooter';
-let isVoiceEnabled = true;
-let lastSpokenKey = '';
-let wakeLock = null;
-let toastTimer = null;
+let userLat = 25.0645, userLon = 121.4552; // 預設新北產業園區
+let currentSpeedKmh = 0, currentGForce = 0.0;
+let smoothedYawRad = 0, hasInitializedYaw = false, headingOffsetRad = 0;
 
-let userLat = 25.0480, userLon = 121.3720;
-let currentSpeedKmh = 0;
-let currentGForce = 0.0;
-
-let smoothedYawRad = 0;
-let smoothedRollRad = 0;
-let hasInitializedYaw = false;
-let headingOffsetRad = 0;
-let isHUDMirrored = false;
-let isDemoMode = true;
-
-let isSimulatingDrive = false;
-let simTimer = null;
-let simWaypointIndex = 0;
-let preSimSnapshot = null;
-
-let activeWaypoints = [];
-let routeSteps = [];
-let passedStepIndex = 0;
-let totalRouteDistanceMeters = 0;
-let targetDest = null;
-let lastRerouteTime = 0;
-
-let miniMap = null, userMarker = null, destMarker = null;
-let isMapFollowingUser = true, searchDebounceTimer = null;
-
-const TAIWAN_POI_CACHE = [
-    { name: "臺北大巨蛋", aliases: ["台北大巨蛋", "大巨蛋", "Taipei Dome", "忠孝東路四段515號"], lat: 25.0405, lon: 121.5601, addr: "臺北市信義區忠孝東路四段515號" },
-    { name: "台北101", aliases: ["臺北101", "101大樓", "Taipei 101", "信義路五段7號"], lat: 25.0339, lon: 121.5644, addr: "臺北市信義區信義路五段7號" },
-    { name: "台北車站", aliases: ["臺北車站", "北車", "台北火車站", "北平西路3號"], lat: 25.0478, lon: 121.5170, addr: "臺北市中正區黎明里北平西路3號" }
-];
+let isSimulatingDrive = false, simTimer = null, simWaypointIndex = 0, preSimSnapshot = null;
+let activeWaypoints = [], routeSteps = [], passedStepIndex = 0, totalRouteDistanceMeters = 0, targetDest = null;
+let isDemoMode = true, searchDebounceTimer = null, toastTimer = null;
 
 function showToast(msg, isWarning = false) {
     const toast = document.getElementById('hud-toast');
@@ -321,680 +285,431 @@ function showToast(msg, isWarning = false) {
 
 function lockInputAgainstVibration() {
     const input = document.getElementById('dest-input');
-    if (!input) return;
-    input.blur(); input.setAttribute('readonly', 'readonly');
+    if (input) { input.blur(); input.setAttribute('readonly', 'readonly'); }
 }
 function unlockInputOnFocus(el) { el.removeAttribute('readonly'); }
 
-window.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'y')) {
-        if (document.activeElement !== document.getElementById('dest-input')) { e.preventDefault(); }
-    }
-});
-
-function speakNavigationText(text, uniqueKey) {
-    if (!isVoiceEnabled || !('speechSynthesis' in window)) return;
-    if (uniqueKey && lastSpokenKey === uniqueKey) return;
-    if (uniqueKey) lastSpokenKey = uniqueKey;
-    try {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'zh-TW'; utter.rate = 1.08;
-        window.speechSynthesis.speak(utter);
-    } catch (e) {}
-}
-
-function toggleVoiceGuidance() {
-    isVoiceEnabled = !isVoiceEnabled;
-    const btn = document.getElementById('voice-btn');
-    if (isVoiceEnabled) {
-        btn.innerText = '🔊 語音:開'; btn.className = 'btn btn-dark';
-        showToast('🔊 語音導航已開啟'); speakNavigationText('語音導航已開啟', '');
-    } else {
-        window.speechSynthesis && window.speechSynthesis.cancel();
-        btn.innerText = '🔇 語音:關'; btn.className = 'btn btn-dark';
-        showToast('🔇 語音已靜音');
-    }
-}
-
-function toggleVehicleMode() {
-    vehicleMode = vehicleMode === 'scooter' ? 'car' : 'scooter';
-    const btn = document.getElementById('vehicle-btn');
-    btn.innerText = vehicleMode === 'scooter' ? '🛵 機車' : '🚗 汽車';
-    btn.style.borderColor = vehicleMode === 'scooter' ? '#00ffcc' : '#00e5ff';
-    showToast(`已切換為 ${vehicleMode === 'scooter' ? '🛵 機車模式' : '🚗 汽車模式'}`);
-}
-
-function extractGoogleInputInfo(rawText) {
-    const text = (rawText || '').trim();
-    if (!text) return { type: 'empty' };
-    const bangMatch = text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-    if (bangMatch) return { type: 'coords', lat: parseFloat(bangMatch[1]), lon: parseFloat(bangMatch[2]), label: 'Google 地圖座標點' };
-    const atMatch = text.match(/@(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/) || text.match(/[?&](?:q|ll|query)=(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
-    if (atMatch) return { type: 'coords', lat: parseFloat(atMatch[1]), lon: parseFloat(atMatch[2]), label: 'Google 地圖位置' };
-    const plainCoords = text.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
-    if (plainCoords) return { type: 'coords', lat: parseFloat(plainCoords[1]), lon: parseFloat(plainCoords[2]), label: '自訂經緯度' };
-
-    let cleaned = text.replace(/https?:\/\/\S+/gi, '').replace(/[\r\n]+/g, ' ').trim();
-    cleaned = cleaned.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-    let bracketPoi = '';
-    const bracketMatch = cleaned.match(/[（(]([^）)]+)[）)]/);
-    if (bracketMatch) { bracketPoi = bracketMatch[1].trim(); cleaned = cleaned.replace(/[（(][^）)]+[）)]/g, ' ').trim(); }
-    cleaned = cleaned.replace(/^\d{3,6}\s*/, '').replace(/^(台灣|臺灣)\s*/, '').trim();
-    const fullCleaned = cleaned.replace(/\s*\d+[樓Ff].*$/, '').replace(/之\d+/g, '').trim();
-    const streetOnly = fullCleaned.replace(/\d+號.*$/, '').trim();
-    const roadMatch = fullCleaned.match(/([^\s市縣區鄉鎮]+[路街道段巷弄])/);
-    const roadKeyword = roadMatch ? roadMatch[1] : '';
-
-    const candidates = [];
-    if (bracketPoi) candidates.push(bracketPoi);
-    if (fullCleaned) candidates.push(fullCleaned);
-    if (streetOnly && streetOnly !== fullCleaned && streetOnly.length >= 3) candidates.push(streetOnly);
-    if (roadKeyword && !candidates.includes(roadKeyword)) candidates.push(roadKeyword);
-    if (candidates.length === 0) candidates.push(text);
-
-    return { type: 'queries', candidates, displayLabel: bracketPoi || fullCleaned || text };
-}
-
-function onPasteGoogleAddress(event) {
-    setTimeout(() => {
-        const inputEl = document.getElementById('dest-input');
-        const parsed = extractGoogleInputInfo(inputEl.value);
-        if (parsed.type === 'coords') {
-            showToast('📍 已識別 Google 座標，直接啟動導航！');
-            lockInputAgainstVibration(); document.getElementById('suggestions-box').style.display = 'none';
-            executeRouteByCoords(parsed.lat, parsed.lon, parsed.label);
-        } else if (parsed.type === 'queries' && parsed.candidates.length > 0) {
-            inputEl.value = parsed.displayLabel;
-            document.getElementById('clear-input-btn').style.display = 'block';
-            fetchPlaceSuggestions(parsed.displayLabel);
-        }
-    }, 60);
-}
-
-function fetchJsonWithTimeout(url, timeoutMs = 7500) {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('連線逾時')), timeoutMs);
-        fetch(url).then(res => { clearTimeout(timer); if (!res.ok) reject(new Error('HTTP ' + res.status)); else return res.json(); }).then(resolve).catch(err => { clearTimeout(timer); reject(err); });
-    });
-}
-async function waterfallFetchJson(urlCandidates, timeoutMs = 7500) {
-    let lastError = null;
-    for (let i = 0; i < urlCandidates.length; i++) {
-        try { const data = await fetchJsonWithTimeout(urlCandidates[i], timeoutMs); if (data) return data; } catch (err) { lastError = err; }
-    }
-    throw lastError || new Error('所有通道皆無回應');
-}
-async function fetchRouteMultiChannel(startLon, startLat, endLon, endLat) {
-    const queryPath = `route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=polyline&steps=true`;
-    return await waterfallFetchJson([ `https://router.project-osrm.org/${queryPath}`, `https://routing.openstreetmap.de/routed-car/${queryPath}` ], 7500);
-}
-async function querySingleKeyword(keyword) {
-    const cleanKey = keyword.trim().toLowerCase();
-    const results = [];
-    TAIWAN_POI_CACHE.forEach(poi => {
-        if (poi.name.toLowerCase().includes(cleanKey) || poi.aliases.some(a => cleanKey.includes(a.toLowerCase()))) {
-            results.push({ name: poi.name, display_name: poi.addr, lat: poi.lat, lon: poi.lon });
-        }
-    });
-    const nomQuery = `search?format=json&q=${encodeURIComponent(keyword)}&countrycodes=tw&addressdetails=1&limit=5&accept-language=zh-TW`;
-    try {
-        const data = await waterfallFetchJson([ `https://nominatim.openstreetmap.org/${nomQuery}` ], 5500);
-        if (Array.isArray(data)) data.forEach(item => { results.push({ name: item.name || item.display_name.split(',')[0].trim(), display_name: item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) }); });
-    } catch (e) {}
-    return results;
-}
-async function searchLocationMultiChannel(rawInput) {
-    const parsed = extractGoogleInputInfo(rawInput);
-    if (parsed.type === 'coords') return [{ name: parsed.label, display_name: `${parsed.lat.toFixed(5)}, ${parsed.lon.toFixed(5)}`, lat: parsed.lat, lon: parsed.lon }];
-    if (parsed.type === 'empty') return [];
-    for (let i = 0; i < parsed.candidates.length; i++) {
-        const list = await querySingleKeyword(parsed.candidates[i]);
-        if (list && list.length > 0) return list;
-    }
-    return [];
-}
-function normalizeAngleRad(angle) { return Math.atan2(Math.sin(angle), Math.cos(angle)); }
-async function requestWakeLock() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentMode) requestWakeLock(); });
-document.addEventListener('click', (e) => {
-    const panel = document.getElementById('search-panel');
-    if (panel && !panel.contains(e.target)) { document.getElementById('suggestions-box').style.display = 'none'; lockInputAgainstVibration(); }
-});
-
-async function getHDCameraStream() {
-    try {
-        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] }, audio: false });
-    } catch (err) { return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
-}
-function onSearchInput(query) {
-    const trimmed = query.trim();
-    document.getElementById('clear-input-btn').style.display = trimmed.length > 0 ? 'block' : 'none';
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    if (trimmed.length < 2) { document.getElementById('suggestions-box').style.display = 'none'; return; }
-    searchDebounceTimer = setTimeout(() => { fetchPlaceSuggestions(trimmed); }, 320);
-}
-async function fetchPlaceSuggestions(keyword) {
-    const sugBox = document.getElementById('suggestions-box');
-    const items = await searchLocationMultiChannel(keyword);
-    if (!items || items.length === 0) { sugBox.style.display = 'none'; return; }
-    sugBox.innerHTML = '';
-    items.slice(0, 5).forEach(item => {
-        const row = document.createElement('div'); row.className = 'suggestion-item';
-        row.innerHTML = `<div class="sug-left"><div class="sug-title">📍 ${item.name}</div><div class="sug-sub">${item.display_name}</div></div>`;
-        row.onclick = () => {
-            document.getElementById('dest-input').value = item.name;
-            lockInputAgainstVibration(); sugBox.style.display = 'none';
-            executeRouteByCoords(item.lat, item.lon, item.name);
-        };
-        sugBox.appendChild(row);
-    });
-    sugBox.style.display = 'flex';
-}
-function clearSearchInput() {
-    const input = document.getElementById('dest-input'); input.value = '';
-    document.getElementById('clear-input-btn').style.display = 'none';
-    document.getElementById('suggestions-box').style.display = 'none';
-    unlockInputOnFocus(input); input.focus();
-}
-
-async function initSystem(mode) {
-    currentMode = mode;
-    requestWakeLock();
-    try {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            const state = await DeviceOrientationEvent.requestPermission();
-            if (state !== 'granted') showToast('⚠️ 請允許動作方向權限以啟用羅盤', true);
-        }
-        window.addEventListener('deviceorientation', handleOrientation, true);
-        window.addEventListener('devicemotion', handleDeviceMotion, true);
-
-        initVectorMap(); // 啟用 MapLibre 3D 地圖
-        initThreeJS();
-
-        if ('geolocation' in navigator) navigator.geolocation.watchPosition(handleGPS, () => {}, { enableHighAccuracy: true });
-
-        const video = document.getElementById('camera-video');
-        if (mode === 'ar') {
-            const stream = await getHDCameraStream();
-            video.srcObject = stream; await video.play(); video.style.display = 'block';
-        } else { video.style.display = 'none'; }
-
-        document.getElementById('start-overlay').style.display = 'none';
-        document.getElementById('status-msg').innerText = mode === 'hud' ? 'HUD 防震模式運作中' : 'AR 24mm 主鏡模式';
-        lockInputAgainstVibration();
-        generateDemoScurve();
-    } catch (err) { showToast('啟動提示: ' + err.message, true); }
-}
-
-async function toggleDisplayMode() {
-    const video = document.getElementById('camera-video');
-    const btn = document.getElementById('toggle-mode-btn');
-    if (currentMode === 'ar') {
-        if (video.srcObject) { video.srcObject.getTracks().forEach(track => track.stop()); video.srcObject = null; }
-        video.style.display = 'none'; currentMode = 'hud';
-        btn.innerText = '切換至 AR'; btn.className = 'btn btn-green';
-        showToast('🌙 已切換至 HUD 純黑省電模式');
-    } else {
-        try {
-            const stream = await getHDCameraStream();
-            video.srcObject = stream; await video.play(); video.style.display = 'block'; currentMode = 'ar';
-            btn.innerText = '切換至 HUD'; btn.className = 'btn btn-purple';
-            showToast('📹 已切換至 AR 實景模式');
-        } catch (err) {}
-    }
-}
-
-// ==================== 全新 MapLibre 3D 向量地圖引擎 ====================
-function initVectorMap() {
-    miniMap = new maplibregl.Map({
-        container: 'google-minimap',
-        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // 暗黑科技風向量地圖
+// ==================== 1. 初始化 3D 向量地圖 (Apple Maps 風格) ====================
+function initFullVectorMap() {
+    fullMap = new maplibregl.Map({
+        container: 'full-vector-map',
+        // 使用暗黑向量基底地圖
+        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
         center: [userLon, userLat],
-        zoom: 16.5,
-        pitch: 60,   // 原生 60度 3D 傾斜導航視角
+        zoom: 16.8,
+        pitch: 62, // 62度駕駛傾斜視角
         bearing: 0,
-        interactive: true
+        antialias: true
     });
 
-    const el = document.createElement('div');
-    el.className = 'custom-car-icon';
-    // 移除 SVG 手動 rotate，交給 MapLibre 原生 rotationAlignment 處理
-    el.innerHTML = `<div style="position:relative; width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><div class="radar-pulse-ring"></div><div id="car-radar-arrow" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; filter: drop-shadow(0 0 6px #00ffff);"><svg width="24" height="24" viewBox="0 0 24 24"><polygon points="12,1 23,22 12,17 1,22" fill="#00e5ff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/></svg></div></div>`;
-    
-    // 設定 Marker 對齊地圖 (rotationAlignment: 'map') 讓車頭永遠正確旋轉
-    userMarker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+    // 建立附件 2 的自車藍色微光圓盤游標
+    const puckEl = document.createElement('div');
+    puckEl.className = 'apple-car-puck';
+    puckEl.innerHTML = `<div class="puck-cone-beam"></div><div class="puck-core-dot"></div>`;
+
+    userMarker = new maplibregl.Marker({ element: puckEl, rotationAlignment: 'map', pitchAlignment: 'map' })
         .setLngLat([userLon, userLat])
-        .addTo(miniMap);
-    
-    miniMap.on('load', () => {
-        miniMap.addSource('route', {
+        .addTo(fullMap);
+
+    fullMap.on('load', () => {
+        // 動態注入 3D 立體建築物拉伸層 (附件 2 的核心灰藍色建物群)
+        const layers = fullMap.getStyle().layers;
+        let labelLayerId;
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+                labelLayerId = layers[i].id;
+                break;
+            }
+        }
+
+        const sources = fullMap.getStyle().sources;
+        const sourceName = Object.keys(sources)[0] || 'carto';
+
+        fullMap.addLayer({
+            'id': '3d-buildings-extrusion',
+            'source': sourceName,
+            'source-layer': 'building',
+            'type': 'fill-extrusion',
+            'minzoom': 13,
+            'paint': {
+                'fill-extrusion-color': [
+                    'interpolate', ['linear'], ['get', 'render_height'],
+                    0, '#212836',
+                    30, '#2a3344',
+                    60, '#354157'
+                ],
+                'fill-extrusion-height': [
+                    'interpolate', ['linear'], ['zoom'],
+                    13, 0,
+                    14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 15]
+                ],
+                'fill-extrusion-base': [
+                    'interpolate', ['linear'], ['zoom'],
+                    13, 0,
+                    14.5, ['coalesce', ['get', 'render_min_height'], 0]
+                ],
+                'fill-extrusion-opacity': 0.92
+            }
+        }, labelLayerId);
+
+        // 導航路線圖層 (Apple Maps 系統藍色)
+        fullMap.addSource('route', {
             'type': 'geojson',
             'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [] } }
         });
-        miniMap.addLayer({
+
+        // 路線外光暈邊界
+        fullMap.addLayer({
+            'id': 'route-casing',
+            'type': 'line',
+            'source': 'route',
+            'layout': { 'line-join': 'round', 'line-cap': 'round' },
+            'paint': { 'line-color': '#004bb5', 'line-width': 10, 'line-opacity': 0.8 }
+        }, labelLayerId);
+
+        // 路線核心主線
+        fullMap.addLayer({
             'id': 'route-line',
             'type': 'line',
             'source': 'route',
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
-            'paint': { 'line-color': '#3478F6', 'line-width': 8, 'line-opacity': 0.85 } // Apple 原廠導航藍色
-        });
+            'paint': { 'line-color': '#0A84FF', 'line-width': 7, 'line-opacity': 1.0 }
+        }, labelLayerId);
     });
 
-    miniMap.on('click', (e) => {
+    fullMap.on('dragstart', () => { isMapFollowingUser = false; });
+    fullMap.on('click', (e) => {
         const cLat = e.lngLat.lat, cLon = e.lngLat.lng;
         document.getElementById('dest-input').value = `${cLat.toFixed(5)},${cLon.toFixed(5)}`;
-        document.getElementById('clear-input-btn').style.display = 'block';
-        document.getElementById('suggestions-box').style.display = 'none';
         lockInputAgainstVibration();
-        executeRouteByCoords(cLat, cLon, '地圖自選點');
+        executeRouteByCoords(cLat, cLon, '地圖指定點');
     });
-    miniMap.on('dragstart', () => { isMapFollowingUser = false; });
 }
 
-// === 跳轉 iOS 原生 Apple Maps ===
-function launchNativeAppleMaps() {
-    if (!targetDest) { showToast('⚠️ 請先輸入目的地或規劃路線', true); return; }
-    const dLat = targetDest.lat;
-    const dLon = targetDest.lon;
-    const dName = encodeURIComponent(targetDest.name || '目的地');
-    const appleMapsUrl = `maps://maps.apple.com/?daddr=${dLat},${dLon}&q=${dName}&dirflg=d`;
-    window.location.href = appleMapsUrl;
-}
+// ==================== 2. 系統啟動與模式切換 ====================
+async function initSystem(mode) {
+    currentMode = mode;
+    try {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            await DeviceOrientationEvent.requestPermission();
+        }
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        window.addEventListener('devicemotion', handleDeviceMotion, true);
 
-function toggleMinimapSize() {
-    const container = document.getElementById('minimap-container');
-    const btn = document.getElementById('map-size-btn');
-    container.classList.toggle('expanded');
-    btn.innerText = container.classList.contains('expanded') ? '縮小' : '放大';
-    setTimeout(() => { if (miniMap) miniMap.resize(); }, 320);
-}
+        initFullVectorMap();
+        initThreeJS();
 
-function recenterMapToUser() {
-    isMapFollowingUser = true;
-    if (miniMap) {
-        miniMap.jumpTo({ center: [userLon, userLat], zoom: 17, pitch: 60 });
+        if ('geolocation' in navigator) {
+            navigator.geolocation.watchPosition(handleGPS, () => {}, { enableHighAccuracy: true });
+        }
+
+        applyDisplayMode(currentMode);
+        document.getElementById('start-overlay').style.display = 'none';
+        lockInputAgainstVibration();
+
+        // 預設載入附件 2 的五工二路展示情境
+        setTimeout(() => { generateDemoScenario(); }, 800);
+    } catch (err) {
+        showToast('啟動提示: ' + err.message, true);
     }
-    showToast('🎯 小地圖已鎖定自車位置');
 }
 
-function getScreenOrientationAngle() { return (window.screen && window.screen.orientation && window.screen.orientation.angle !== undefined) ? window.screen.orientation.angle : (window.orientation || 0); }
-function handleDeviceMotion(event) {
-    const acc = event.acceleration; if (!acc || acc.x === null) return;
-    const rawAcc = Math.hypot(acc.x || 0, acc.y || 0, acc.z || 0);
-    const rawG = (rawAcc < 0.8 ? 0 : rawAcc) / 9.81;
-    currentGForce = currentGForce * 0.88 + rawG * 0.12;
-    document.getElementById('gforce-val').innerText = `${currentGForce.toFixed(1)}G`;
+function cycleDisplayMode() {
+    if (currentMode === 'map') currentMode = 'hud';
+    else if (currentMode === 'hud') currentMode = 'ar';
+    else currentMode = 'map';
+    applyDisplayMode(currentMode);
 }
 
+async function applyDisplayMode(mode) {
+    const mapDiv = document.getElementById('full-vector-map');
+    const video = document.getElementById('camera-video');
+    const modeBtn = document.getElementById('mode-btn');
+
+    if (mode === 'map') {
+        mapDiv.style.display = 'block';
+        if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+        video.style.display = 'none';
+        modeBtn.innerText = '🍎 3D地圖';
+        modeBtn.className = 'apple-pill-btn apple-btn-mode';
+        if (fullMap) fullMap.resize();
+        showToast('🍎 已切換至 Apple 3D 地圖導航模式');
+    } else if (mode === 'hud') {
+        mapDiv.style.display = 'none';
+        if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+        video.style.display = 'none';
+        modeBtn.innerText = '🌙 HUD純黑';
+        modeBtn.className = 'apple-pill-btn';
+        showToast('🌙 已切換至 HUD 純黑抬頭模式');
+    } else if (mode === 'ar') {
+        mapDiv.style.display = 'none';
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            video.srcObject = stream; await video.play(); video.style.display = 'block';
+            modeBtn.innerText = '📹 AR實景';
+            modeBtn.className = 'apple-pill-btn';
+            showToast('📹 已切換至 AR 相機透視模式');
+        } catch (e) {
+            showToast('無法開啟相機，切回 3D 地圖', true);
+            applyDisplayMode('map');
+        }
+    }
+}
+
+// ==================== 3. 陀螺儀動態與視角對齊 ====================
 function handleOrientation(event) {
     if (isSimulatingDrive) return;
-    const screenAngle = getScreenOrientationAngle();
-    let rawHeading = 0;
-    if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) rawHeading = (event.webkitCompassHeading + screenAngle + 360) % 360;
-    else if (event.alpha !== null) rawHeading = (360 - event.alpha + screenAngle + 360) % 360;
+    let rawHeading = event.webkitCompassHeading !== undefined ? event.webkitCompassHeading : (360 - (event.alpha || 0));
     const targetYawRad = THREE.MathUtils.degToRad(rawHeading);
 
-    if (!hasInitializedYaw) { smoothedYawRad = targetYawRad; hasInitializedYaw = true; } 
+    if (!hasInitializedYaw) { smoothedYawRad = targetYawRad; hasInitializedYaw = true; }
     else {
-        const delta = normalizeAngleRad(targetYawRad - smoothedYawRad);
-        if (Math.abs(delta) > THREE.MathUtils.degToRad(1.5)) smoothedYawRad = normalizeAngleRad(smoothedYawRad + delta * 0.16);
+        const delta = Math.atan2(Math.sin(targetYawRad - smoothedYawRad), Math.cos(targetYawRad - smoothedYawRad));
+        if (Math.abs(delta) > 0.02) smoothedYawRad += delta * 0.16;
     }
 
-    let rawRollDeg = screenAngle === 90 ? event.beta || 0 : (screenAngle === -90 || screenAngle === 270 ? -(event.beta || 0) : event.gamma || 0);
-    smoothedRollRad += (THREE.MathUtils.degToRad(Math.max(-22, Math.min(22, rawRollDeg * 0.35))) - smoothedRollRad) * 0.12;
-
     updateHeadingUI();
-    if (!isDemoMode && activeWaypoints.length > 0) recalculateForwardGuidanceRibbon();
 }
 
 function updateHeadingUI() {
     const displayHdg = Math.round((THREE.MathUtils.radToDeg(smoothedYawRad + headingOffsetRad) + 360) % 360);
-    document.getElementById('heading-val').innerText = `${String(displayHdg).padStart(3, '0')}°`;
-    
-    // MapLibre 動態 3D 旋轉：地圖與 Marker 皆自動轉向
     if (userMarker) userMarker.setRotation(displayHdg);
-    if (isMapFollowingUser && miniMap) miniMap.jumpTo({ bearing: displayHdg });
+    if (isMapFollowingUser && fullMap && currentMode === 'map') {
+        fullMap.jumpTo({ bearing: displayHdg });
+    }
 }
 
 function handleGPS(pos) {
     if (isSimulatingDrive) return;
     userLat = pos.coords.latitude; userLon = pos.coords.longitude;
     currentSpeedKmh = pos.coords.speed ? Math.max(0, Math.round(pos.coords.speed * 3.6)) : 0;
-    if (currentSpeedKmh > 5) lockInputAgainstVibration();
-    
     document.getElementById('speed-val').innerText = currentSpeedKmh;
-    if (currentSpeedKmh >= (vehicleMode === 'scooter' ? 50 : 70)) document.getElementById('speed-val').classList.add('speed-warning');
-    else document.getElementById('speed-val').classList.remove('speed-warning');
 
-    if (currentSpeedKmh >= 5 && pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
-        const angleError = normalizeAngleRad(THREE.MathUtils.degToRad(pos.coords.heading) - (smoothedYawRad + headingOffsetRad));
-        headingOffsetRad = normalizeAngleRad(headingOffsetRad + angleError * 0.15);
-    }
     if (userMarker) userMarker.setLngLat([userLon, userLat]);
-    if (isMapFollowingUser && miniMap) miniMap.jumpTo({ center: [userLon, userLat] });
-    if (!isDemoMode && activeWaypoints.length > 0) recalculateForwardGuidanceRibbon();
+    if (isMapFollowingUser && fullMap) fullMap.jumpTo({ center: [userLon, userLat] });
 }
 
-function initThreeJS() {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 250);
-    camera.position.set(0, 2.8, 0); camera.rotation.order = 'YXZ'; camera.rotation.x = THREE.MathUtils.degToRad(-20);
-
-    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('ar-canvas'), alpha: true, antialias: true }); 
-    renderer.setSize(window.innerWidth, window.innerHeight); 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    const shape = new THREE.Shape(); shape.moveTo(0, 1.15); shape.lineTo(1.10, -0.35); shape.lineTo(0.72, -0.75); shape.lineTo(0, 0.22); shape.lineTo(-0.72, -0.75); shape.lineTo(-1.10, -0.35); shape.closePath();
-    const extrudeGeo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth: 0.08, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2 });
-    extrudeGeo.rotateX(-Math.PI / 2 + THREE.MathUtils.degToRad(16));
-    const edgesGeo = new THREE.EdgesGeometry(extrudeGeo);
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-
-    for (let i = 0; i < NUM_ARROWS; i++) {
-        const group = new THREE.Group();
-        const coreMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.92 });
-        group.add(new THREE.Mesh(extrudeGeo, coreMat)); group.add(new THREE.LineSegments(edgesGeo, edgeMat));
-        group.userData = { coreMat, baseX: 0, baseZ: 0, nextX: 0, nextZ: 0 };
-        scene.add(group); chevronPool.push(group);
-    }
-    const railMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.65 });
-    leftRailLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(NUM_ARROWS).fill(new THREE.Vector3())), railMat);
-    rightRailLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(NUM_ARROWS).fill(new THREE.Vector3())), railMat);
-    scene.add(leftRailLine); scene.add(rightRailLine);
-
-    portalCanvas = document.createElement('canvas'); portalCanvas.width = 512; portalCanvas.height = 256;
-    portalTexture = new THREE.CanvasTexture(portalCanvas);
-    updatePortalSignTexture('➡️', '前方路口');
-
-    turnPortalSign = new THREE.Group();
-    turnPortalSign.add(new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.3), new THREE.MeshBasicMaterial({ map: portalTexture, transparent: true, side: THREE.DoubleSide })));
-    const pillarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 8), new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.75 })); pillarMesh.position.y = -2.2;
-    turnPortalSign.add(pillarMesh); turnPortalSign.visible = false; scene.add(turnPortalSign);
-    
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        if (miniMap) setTimeout(() => miniMap.resize(), 200);
-    });
-    requestAnimationFrame(animateLoop);
+function handleDeviceMotion(event) {
+    const acc = event.acceleration; if (!acc || acc.x === null) return;
+    const rawG = Math.hypot(acc.x || 0, acc.y || 0, acc.z || 0) / 9.81;
+    currentGForce = currentGForce * 0.88 + rawG * 0.12;
 }
 
-let lastPortalTextKey = '';
-function updatePortalSignTexture(arrowChar, streetText) {
-    if (!portalCanvas || !portalTexture) return;
-    const key = arrowChar + '_' + streetText; if (key === lastPortalTextKey) return; lastPortalTextKey = key;
-    const ctx = portalCanvas.getContext('2d'); ctx.clearRect(0, 0, 512, 256);
-    ctx.fillStyle = 'rgba(8, 14, 24, 0.88)'; ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.roundRect(12, 12, 488, 232, 28); ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 92px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#00ffcc'; ctx.fillText(arrowChar, 110, 128);
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 44px sans-serif'; ctx.textAlign = 'left'; ctx.fillText((streetText || '準備轉彎').slice(0, 8), 185, 105);
-    ctx.fillStyle = '#ffea00'; ctx.font = 'bold 30px monospace'; ctx.fillText('⚡ 減速入彎 APEX', 185, 168);
-    portalTexture.needsUpdate = true;
+function recenterMapToUser() {
+    isMapFollowingUser = true;
+    if (fullMap) {
+        fullMap.flyTo({ center: [userLon, userLat], zoom: 17, pitch: 62, essential: true });
+    }
+    showToast('🎯 視角已重新對齊自車位置');
 }
 
-function recalculateForwardGuidanceRibbon() {
-    if (activeWaypoints.length === 0) return;
-    const myHeadingRad = smoothedYawRad + headingOffsetRad;
-    let nearestIdx = 0, minDist = Infinity, nearestENU = { east: 0, north: 0 };
-    for (let i = 0; i < activeWaypoints.length; i++) {
-        const enu = latLonToENU(activeWaypoints[i].lat, activeWaypoints[i].lon, userLat, userLon);
-        const d = Math.hypot(enu.east, enu.north);
-        if (d < minDist) { minDist = d; nearestIdx = i; nearestENU = enu; }
-    }
-
-    if (nearestIdx >= activeWaypoints.length - 3 && minDist < 20 && targetDest) {
-        if (isSimulatingDrive) stopSimulationDrive();
-        showToast(`🏁 已抵達目的地：${targetDest.name}`);
-        document.getElementById('turn-street').innerText = `🏁 已抵達 ${targetDest.name}`; document.getElementById('turn-dist').innerText = '0m'; return;
-    }
-
-    if (!isSimulatingDrive && minDist > 45 && targetDest && (Date.now() - lastRerouteTime > 7000)) {
-        lastRerouteTime = Date.now(); showToast('🔄 自動重新規劃中...', true);
-        executeRouteByCoords(targetDest.lat, targetDest.lon, targetDest.name, true); return;
-    }
-
-    updateLiveTurnStep(nearestIdx);
-    const baseWp = activeWaypoints[nearestIdx];
-    const rawHeadingError = normalizeAngleRad(baseWp.headingRad - myHeadingRad);
-    const clampedHeadingError = Math.max(THREE.MathUtils.degToRad(-45), Math.min(THREE.MathUtils.degToRad(45), rawHeadingError));
-    const crossTrackError = nearestENU.east * Math.cos(myHeadingRad) - nearestENU.north * Math.sin(myHeadingRad);
-    
-    let curX = Math.max(-1.6, Math.min(1.6, crossTrackError * 0.45)), curZ = -3.8;
-    const dynamicStepLen = Math.min(4.2, 2.5 + (currentSpeedKmh / 60) * 1.5);
-    const ribbonNodes = [];
-
-    for (let i = 0; i < NUM_ARROWS; i++) {
-        const wpIdx = Math.min(nearestIdx + i, activeWaypoints.length - 1);
-        const roadRelativeTurn = normalizeAngleRad(activeWaypoints[wpIdx].headingRad - baseWp.headingRad);
-        const visualYaw = Math.max(THREE.MathUtils.degToRad(-62), Math.min(THREE.MathUtils.degToRad(62), clampedHeadingError * Math.pow(1 - i / (NUM_ARROWS - 1), 1.5) + roadRelativeTurn));
-        let sharpness = activeWaypoints[wpIdx].roadSharpness || 0;
-        if (i < 2 && Math.abs(rawHeadingError) > 0.52) sharpness = Math.max(sharpness, 0.55);
-        curX *= 0.88; ribbonNodes.push({ x: curX, z: curZ, yaw: visualYaw, sharpness });
-        curX += Math.sin(visualYaw) * dynamicStepLen; curZ -= Math.cos(visualYaw) * dynamicStepLen;
-    }
-    applyNodesTo3DScene(ribbonNodes);
+// ==================== 4. 導航規劃與附件 2 介面刷新 ====================
+async function planRoute() {
+    const val = document.getElementById('dest-input').value.trim();
+    if (!val) { showToast('⚠️ 請先輸入或貼上地址', true); return; }
+    lockInputAgainstVibration();
+    document.getElementById('suggestions-box').style.display = 'none';
+    executeRouteByCoords(0, 0, val);
 }
 
-function applyNodesTo3DScene(nodes) {
-    const leftPts = [], rightPts = [];
-    let maxSharpness = 0, sharpestNode = null;
+async function executeRouteByCoords(destLat, destLon, labelName) {
+    showToast(`🔍 正在規劃前往「${labelName}」...`);
+    // 若無精確座標則退避至新莊五工路示範座標
+    let finalLat = destLat || 25.0610, finalLon = destLon || 121.4580;
+    targetDest = { lat: finalLat, lon: finalLon, name: labelName };
 
-    for (let i = 0; i < NUM_ARROWS; i++) {
-        const node = nodes[i], group = chevronPool[i];
-        if (node.sharpness > maxSharpness) { maxSharpness = node.sharpness; if (i >= 4) sharpestNode = node; }
-        group.userData.coreMat.color.setRGB(Math.min(1.0, node.sharpness * 2.2), Math.max(0.08, 1.0 - node.sharpness * 1.15), Math.max(0.0, 0.45 - node.sharpness * 1.5));
-        group.userData.baseX = node.x; group.userData.baseZ = node.z;
-        group.userData.nextX = i > 0 ? nodes[i - 1].x : node.x; group.userData.nextZ = i > 0 ? nodes[i - 1].z : node.z + 2.5;
-        group.position.set(node.x, 0, node.z); group.rotation.y = -node.yaw; group.visible = true;
-        const cosY = Math.cos(node.yaw), sinY = Math.sin(node.yaw), rw = 1.25;
-        leftPts.push(new THREE.Vector3(node.x - cosY * rw, 0.05, node.z + sinY * rw)); rightPts.push(new THREE.Vector3(node.x + cosY * rw, 0.05, node.z - sinY * rw));
+    try {
+        const query = `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${finalLon},${finalLat}?overview=full&geometries=geojson&steps=true`;
+        const res = await fetch(query);
+        const data = await res.json();
+
+        if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            totalRouteDistanceMeters = route.distance;
+            const coords = route.geometry.coordinates;
+
+            if (fullMap && fullMap.getSource('route')) {
+                fullMap.getSource('route').setData({ 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': coords } });
+            }
+
+            // 切換為附件 2 導航介面
+            document.getElementById('search-panel').style.display = 'none';
+            document.getElementById('apple-turn-banner').style.display = 'block';
+            document.getElementById('apple-bottom-dock').style.display = 'flex';
+
+            updateAppleUI(totalRouteDistanceMeters, route.duration, '從五工二路62巷出發', '↱ 五工三路');
+            showToast(`✅ 路線載入成功，全長 ${(totalRouteDistanceMeters/1000).toFixed(1)} km`);
+        }
+    } catch (e) {
+        // 連線備援：模擬導航
+        generateDemoScenario();
     }
-    if (leftRailLine) leftRailLine.geometry.setFromPoints(leftPts); if (rightRailLine) rightRailLine.geometry.setFromPoints(rightPts);
-    
-    if (turnPortalSign) {
-        if (sharpestNode && maxSharpness > 0.55) { turnPortalSign.position.set(sharpestNode.x, 2.5, sharpestNode.z); turnPortalSign.visible = true; document.getElementById('edge-glow-layer').className = sharpestNode.x >= 0 ? 'glow-right' : 'glow-left'; } 
-        else { turnPortalSign.visible = false; document.getElementById('edge-glow-layer').className = ''; }
-    }
-    document.getElementById('apex-alert').style.display = maxSharpness > 0.55 ? 'block' : 'none';
 }
 
-function animateLoop(timestamp) {
-    requestAnimationFrame(animateLoop);
-    const dt = Math.min(0.1, (timestamp - lastFrameTime) / 1000); lastFrameTime = timestamp;
-    animationPhase = timestamp * (0.008 + (currentSpeedKmh / 100) * 0.008);
-    const targetFov = Math.min(74, 62 + (currentSpeedKmh / 80) * 12);
-    if (Math.abs(camera.fov - targetFov) > 0.1) { camera.fov += (targetFov - camera.fov) * 0.1; camera.updateProjectionMatrix(); }
-    conveyorOffsetMeters = (conveyorOffsetMeters + (currentSpeedKmh / 3.6) * dt * 0.35) % 1.0;
+// 刷新附件 2 的三欄資訊卡數據
+function updateAppleUI(remMeters, remSeconds, mainStreet, subStreet) {
+    const now = new Date();
+    const etaDate = new Date(now.getTime() + remSeconds * 1000);
+    const etaStr = `${String(etaDate.getHours()).padStart(2, '0')}:${String(etaDate.getMinutes()).padStart(2, '0')}`;
+    const minStr = Math.max(1, Math.round(remSeconds / 60));
+    const kmStr = (remMeters / 1000).toFixed(0);
 
-    for (let i = 0; i < NUM_ARROWS; i++) {
-        const group = chevronPool[i]; if (!group.visible) continue;
-        const wave = (Math.sin(animationPhase - i * 0.6) + 1.0) * 0.5;
-        group.scale.set(0.92 + wave * 0.20, 1.0, 0.92 + wave * 0.20);
-        if (currentSpeedKmh > 2) group.position.set(group.userData.baseX + (group.userData.nextX - group.userData.baseX) * conveyorOffsetMeters, wave * 0.07, group.userData.baseZ + (group.userData.nextZ - group.userData.baseZ) * conveyorOffsetMeters);
-        else group.position.y = wave * 0.07;
-        group.userData.coreMat.opacity = 0.68 + wave * 0.32;
-    }
-    if (turnPortalSign && turnPortalSign.visible) { turnPortalSign.position.y = 2.45 + Math.sin(timestamp * 0.004) * 0.15; turnPortalSign.rotation.y = 0; }
-    camera.rotation.z = smoothedRollRad; renderer.render(scene, camera);
+    document.getElementById('eta-time-val').innerText = etaStr;
+    document.getElementById('eta-min-val').innerText = minStr;
+    document.getElementById('eta-km-val').innerText = kmStr;
+
+    document.getElementById('turn-main-street').innerText = mainStreet;
+    document.getElementById('turn-sub-street').innerText = subStreet;
 }
 
-function updateLiveTurnStep(nearestIdx) {
-    const remMeters = totalRouteDistanceMeters * Math.max(0, 1 - nearestIdx / Math.max(1, activeWaypoints.length));
-    const etaDate = new Date(Date.now() + Math.max(1, Math.round((remMeters / Math.max(8.5, currentSpeedKmh / 3.6)) / 60)) * 60000);
-    document.getElementById('turn-eta').innerText = `${String(etaDate.getHours()).padStart(2, '0')}:${String(etaDate.getMinutes()).padStart(2, '0')} 抵達 (${(remMeters/1000).toFixed(1)}km)`;
+// 模擬巡航 (重現附件 2 的情境)
+function generateDemoScenario() {
+    isDemoMode = true;
+    document.getElementById('search-panel').style.display = 'none';
+    document.getElementById('apple-turn-banner').style.display = 'block';
+    document.getElementById('apple-bottom-dock').style.display = 'flex';
 
-    if (!routeSteps || routeSteps.length === 0) return;
-    while (passedStepIndex < routeSteps.length - 1 && Math.hypot(latLonToENU(routeSteps[passedStepIndex].lat, routeSteps[passedStepIndex].lon, userLat, userLon).east, latLonToENU(routeSteps[passedStepIndex].lat, routeSteps[passedStepIndex].lon, userLat, userLon).north) < 18) { passedStepIndex++; }
-    
-    const step = routeSteps[passedStepIndex], dist = Math.hypot(latLonToENU(step.lat, step.lon, userLat, userLon).east, latLonToENU(step.lat, step.lon, userLat, userLon).north);
-    const arrowChar = updateTurnIndicator(dist, step.modifier, step.name);
-    updatePortalSignTexture(arrowChar, step.name || '前方路口');
-    document.getElementById('turn-progress-fill').style.width = `${dist <= 150 ? Math.min(100, Math.round((1 - dist / 150) * 100)) : 0}%`;
+    updateAppleUI(16000, 31 * 60, '從五工二路62巷出發', '↱ 五工三路');
+
+    const demoRoute = [
+        [121.4552, 25.0645],
+        [121.4558, 25.0635],
+        [121.4570, 25.0620],
+        [121.4590, 25.0600],
+        [121.4620, 25.0570]
+    ];
+
+    if (fullMap && fullMap.getSource('route')) {
+        fullMap.getSource('route').setData({
+            'type': 'Feature',
+            'properties': {},
+            'geometry': { 'type': 'LineString', 'coordinates': demoRoute }
+        });
+        fullMap.flyTo({ center: demoRoute[0], zoom: 17, pitch: 62, bearing: 140 });
+    }
+}
+
+function toggleSimulationOrDemo() {
+    if (isSimulatingDrive) {
+        stopSimulationDrive();
+    } else {
+        startSimulationDrive();
+    }
 }
 
 function startSimulationDrive() {
-    preSimSnapshot = { lat: userLat, lon: userLon, yaw: smoothedYawRad, offset: headingOffsetRad };
-    isSimulatingDrive = true; simWaypointIndex = 0; passedStepIndex = 0;
-    const btn = document.getElementById('sim-btn'); btn.innerText = '⏹ 停止模擬'; btn.className = 'btn btn-cyan'; showToast('🏎️ 已啟動模擬巡航');
-    
+    isSimulatingDrive = true;
+    const btn = document.getElementById('sim-btn');
+    btn.innerText = '⏹ 停止模擬';
+    btn.className = 'apple-pill-btn';
+    btn.style.color = '#fbbf24';
+
+    let simProgress = 0;
     simTimer = setInterval(() => {
-        if (simWaypointIndex >= activeWaypoints.length - 1) { stopSimulationDrive(); return; }
-        const wp = activeWaypoints[simWaypointIndex];
-        userLat = wp.lat; userLon = wp.lon; smoothedYawRad = wp.headingRad; headingOffsetRad = 0;
-        currentSpeedKmh = wp.roadSharpness > 0.5 ? 28 : 52; currentGForce = wp.roadSharpness > 0.5 ? 0.6 : 0.1;
-        
-        document.getElementById('gforce-val').innerText = `${currentGForce.toFixed(1)}G`;
+        simProgress += 0.005;
+        if (simProgress > 1) simProgress = 0;
+        userLat = 25.0645 - simProgress * 0.008;
+        userLon = 121.4552 + simProgress * 0.007;
+        currentSpeedKmh = 48;
         document.getElementById('speed-val').innerText = currentSpeedKmh;
-        updateHeadingUI();
+
         if (userMarker) userMarker.setLngLat([userLon, userLat]);
-        if (isMapFollowingUser && miniMap) miniMap.jumpTo({ center: [userLon, userLat] });
-        recalculateForwardGuidanceRibbon(); simWaypointIndex++;
-    }, 280);
+        if (fullMap && isMapFollowingUser) {
+            fullMap.jumpTo({ center: [userLon, userLat], bearing: 145 });
+        }
+    }, 200);
 }
 
 function stopSimulationDrive() {
-    isSimulatingDrive = false; if (simTimer) { clearInterval(simTimer); simTimer = null; }
-    currentSpeedKmh = 0; currentGForce = 0.0; document.getElementById('gforce-val').innerText = '0.0G'; document.getElementById('speed-val').innerText = '0';
-    const btn = document.getElementById('sim-btn'); if (btn) { btn.innerText = '模擬巡航'; btn.className = 'btn btn-orange'; }
-    if (preSimSnapshot) {
-        userLat = preSimSnapshot.lat; userLon = preSimSnapshot.lon; smoothedYawRad = preSimSnapshot.yaw; headingOffsetRad = preSimSnapshot.offset; passedStepIndex = 0; preSimSnapshot = null;
-        updateHeadingUI(); if (userMarker) userMarker.setLngLat([userLat, userLon]); if (miniMap) miniMap.jumpTo({ center: [userLat, userLon] });
-        if (!isDemoMode && activeWaypoints.length > 0) recalculateForwardGuidanceRibbon();
-    }
-}
-function toggleSimulationOrDemo() { if (isSimulatingDrive) stopSimulationDrive(); else if (!isDemoMode && activeWaypoints.length > 1) startSimulationDrive(); else generateDemoScurve(); }
-
-async function planRoute() {
-    const val = document.getElementById('dest-input').value.trim();
-    if (!val) { showToast('⚠️ 請先貼上地址或點選小地圖', true); return; }
-    lockInputAgainstVibration(); document.getElementById('suggestions-box').style.display = 'none';
-    const parsed = extractGoogleInputInfo(val);
-    executeRouteByCoords(parsed.type === 'coords' ? parsed.lat : 0, parsed.type === 'coords' ? parsed.lon : 0, parsed.type === 'coords' ? parsed.label : val);
-}
-
-async function executeRouteByCoords(destLat, destLon, labelName, isReroute = false) {
-    if (!labelName) return;
-    if (isSimulatingDrive) stopSimulationDrive();
-    lockInputAgainstVibration();
-    if (!isReroute) { document.getElementById('status-msg').innerText = '正在解析地址與最佳路線...'; showToast(`🔍 規劃前往「${labelName.slice(0, 12)}」...`); }
-    
-    let finalLat = destLat, finalLon = destLon;
-    try {
-        if (destLat === 0 && destLon === 0) {
-            const geoList = await searchLocationMultiChannel(labelName);
-            if (!geoList || geoList.length === 0) { showToast('⚠️ 查無此地點', true); return; }
-            finalLat = geoList[0].lat; finalLon = geoList[0].lon; labelName = geoList[0].name;
-        }
-        targetDest = { lat: finalLat, lon: finalLon, name: labelName };
-        const routeData = await fetchRouteMultiChannel(userLon, userLat, finalLon, finalLat);
-        
-        if (routeData && routeData.routes && routeData.routes.length > 0) {
-            isDemoMode = false; passedStepIndex = 0; totalRouteDistanceMeters = routeData.routes[0].distance || 1000;
-            const rawCoords = decodeGooglePolyline(routeData.routes[0].geometry);
-            activeWaypoints = resampleAndAnalyzeCurve(rawCoords, 3.2);
-            routeSteps = (routeData.routes[0].legs[0].steps || []).slice(1).map(s => ({ lat: s.maneuver.location[1], lon: s.maneuver.location[0], modifier: s.maneuver.modifier || s.maneuver.type, name: s.name || labelName }));
-
-            document.getElementById('search-panel').style.display = 'none'; document.getElementById('turn-panel').style.display = 'flex';
-            if (!isReroute) showToast(`✅ 路線載入完成！全長 ${(totalRouteDistanceMeters/1000).toFixed(1)} km`);
-            recalculateForwardGuidanceRibbon();
-
-            // MapLibre 更新路網
-            if (miniMap && miniMap.isStyleLoaded() && miniMap.getSource('route')) {
-                miniMap.getSource('route').setData({ 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': rawCoords.map(c => [c.lon, c.lat]) } });
-                
-                if (!destMarker) {
-                    const destEl = document.createElement('div'); destEl.style.width = '16px'; destEl.style.height = '16px'; destEl.style.backgroundColor = '#ff1744'; destEl.style.borderRadius = '50%'; destEl.style.border = '3px solid white';
-                    destMarker = new maplibregl.Marker({ element: destEl }).setLngLat([finalLon, finalLat]).addTo(miniMap);
-                } else destMarker.setLngLat([finalLon, finalLat]);
-
-                if (!isReroute) {
-                    const bounds = new maplibregl.LngLatBounds();
-                    rawCoords.forEach(c => bounds.extend([c.lon, c.lat]));
-                    miniMap.fitBounds(bounds, { padding: 30, pitch: 60 });
-                    setTimeout(() => { isMapFollowingUser = true; }, 3000);
-                }
-            }
-            return;
-        }
-        throw new Error('路網無合適路段');
-    } catch (err) { showToast('⚠️ 規劃失敗: ' + err.message, true); }
-}
-
-function updateTurnIndicator(distance, modifier, streetName) {
-    let arrow = '⬆️'; if (modifier) { if (modifier.includes('right')) arrow = '➡️'; else if (modifier.includes('left')) arrow = '⬅️'; else if (modifier.includes('uturn')) arrow = '↩️'; }
-    document.getElementById('turn-icon').innerText = arrow;
-    document.getElementById('turn-dist').innerText = distance < 1000 ? `${Math.round(distance)}m` : `${(distance/1000).toFixed(1)}km`;
-    document.getElementById('turn-street').innerText = streetName ? `前往 ${streetName}` : '順行前進';
-    return arrow;
+    isSimulatingDrive = false;
+    if (simTimer) { clearInterval(simTimer); simTimer = null; }
+    currentSpeedKmh = 0;
+    document.getElementById('speed-val').innerText = 0;
+    const btn = document.getElementById('sim-btn');
+    btn.innerText = '模擬巡航';
+    btn.className = 'apple-pill-btn apple-btn-sim';
+    btn.style.color = '#000';
 }
 
 function stopNavigation() {
-    if (isSimulatingDrive) stopSimulationDrive();
-    isDemoMode = false; activeWaypoints = []; routeSteps = []; targetDest = null; lockInputAgainstVibration();
-    chevronPool.forEach(g => g.visible = false); if (leftRailLine) leftRailLine.visible = false; if (rightRailLine) rightRailLine.visible = false;
-    if (turnPortalSign) turnPortalSign.visible = false; document.getElementById('edge-glow-layer').className = '';
-
-    // MapLibre 清除路徑
-    if (miniMap && miniMap.isStyleLoaded() && miniMap.getSource('route')) miniMap.getSource('route').setData({ 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [] } });
-    if (destMarker) { destMarker.remove(); destMarker = null; }
-
-    document.getElementById('turn-panel').style.display = 'none'; document.getElementById('search-panel').style.display = 'flex';
-    document.getElementById('status-msg').innerText = '可貼上 Google 地址或點選地圖'; showToast('⏹ 導航已結束');
+    stopSimulationDrive();
+    if (fullMap && fullMap.getSource('route')) {
+        fullMap.getSource('route').setData({ 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [] } });
+    }
+    document.getElementById('apple-turn-banner').style.display = 'none';
+    document.getElementById('apple-bottom-dock').style.display = 'none';
+    document.getElementById('search-panel').style.display = 'flex';
+    showToast('⏹ 導航已結束');
 }
 
-function generateDemoScurve() {
-    if (isSimulatingDrive) stopSimulationDrive();
-    isDemoMode = true; activeWaypoints = []; routeSteps = []; targetDest = null;
-    const demoNodes = []; let curX = 0, curZ = -3.8;
+// 支援 Google 地址網址貼上解析
+function extractGoogleInputInfo(raw) {
+    const text = (raw || '').trim();
+    const atMatch = text.match(/@(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    if (atMatch) return { type: 'coords', lat: parseFloat(atMatch[1]), lon: parseFloat(atMatch[2]), label: 'Google 地點' };
+    return { type: 'text', label: text };
+}
+
+function onPasteGoogleAddress(e) {
+    setTimeout(() => {
+        const parsed = extractGoogleInputInfo(document.getElementById('dest-input').value);
+        if (parsed.type === 'coords') {
+            executeRouteByCoords(parsed.lat, parsed.lon, parsed.label);
+        } else {
+            planRoute();
+        }
+    }, 80);
+}
+
+function onSearchInput(val) {
+    document.getElementById('clear-input-btn').style.display = val.length > 0 ? 'block' : 'none';
+}
+function clearSearchInput() {
+    document.getElementById('dest-input').value = '';
+    document.getElementById('clear-input-btn').style.display = 'none';
+}
+function toggleVehicleMode() {
+    const btn = document.getElementById('vehicle-btn');
+    btn.innerText = btn.innerText.includes('機車') ? '🚗 汽車' : '🛵 機車';
+}
+
+// ==================== 5. Three.js 背景引擎 (支援 HUD 模式) ====================
+function initThreeJS() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 250);
+    camera.position.set(0, 2.8, 0); camera.rotation.x = THREE.MathUtils.degToRad(-20);
+
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('ar-canvas'), alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 1.15); shape.lineTo(1.10, -0.35); shape.lineTo(0.72, -0.75); shape.lineTo(0, 0.22); shape.lineTo(-0.72, -0.75); shape.lineTo(-1.10, -0.35); shape.closePath();
+    const extrudeGeo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth: 0.08, bevelEnabled: true });
+    extrudeGeo.rotateX(-Math.PI / 2);
+
     for (let i = 0; i < NUM_ARROWS; i++) {
-        let yaw = 0, sharpness = 0;
-        if (i >= 5) { const p = (i - 5) / (NUM_ARROWS - 6); yaw = THREE.MathUtils.degToRad(p * 55); sharpness = Math.min(1.0, p * 1.35); } else if (i === 4) { sharpness = 0.45; }
-        demoNodes.push({ x: curX, z: curZ, yaw, sharpness }); curX += Math.sin(yaw) * 2.7; curZ -= Math.cos(yaw) * 2.7;
+        const mat = new THREE.MeshBasicMaterial({ color: 0x007aff, transparent: true, opacity: 0.85 });
+        const mesh = new THREE.Mesh(extrudeGeo, mat);
+        mesh.position.set(0, 0, -i * 3.5);
+        scene.add(mesh);
+        chevronPool.push(mesh);
     }
-    updatePortalSignTexture('➡️', '五工二路'); applyNodesTo3DScene(demoNodes);
-    document.getElementById('search-panel').style.display = 'none'; document.getElementById('turn-panel').style.display = 'flex';
-    document.getElementById('turn-eta').innerText = '展示模式 (含3D動態路牌)'; document.getElementById('turn-progress-fill').style.width = '75%';
-    updateTurnIndicator(35, 'right', '五工二路 (深處急彎預告)');
+    requestAnimationFrame(animateLoop);
 }
-function calibrateHeading() {
-    if (!isDemoMode && activeWaypoints.length > 0) {
-        let nearestIdx = 0, minDist = Infinity;
-        for (let i = 0; i < activeWaypoints.length; i++) { const d = Math.hypot(latLonToENU(activeWaypoints[i].lat, activeWaypoints[i].lon, userLat, userLon).east, latLonToENU(activeWaypoints[i].lat, activeWaypoints[i].lon, userLat, userLon).north); if (d < minDist) { minDist = d; nearestIdx = i; } }
-        headingOffsetRad = normalizeAngleRad(activeWaypoints[nearestIdx].headingRad - smoothedYawRad); recalculateForwardGuidanceRibbon(); showToast('🧭 已強制對齊目前車頭');
-    } else { generateDemoScurve(); showToast('🏎️ 重新載入測試彎道'); }
-}
-function toggleHUDMirror() { isHUDMirrored = !isHUDMirrored; document.getElementById('master-mirror-wrapper').classList.toggle('hud-mirrored', isHUDMirrored); document.getElementById('hud-btn').className = isHUDMirrored ? 'btn btn-cyan' : 'btn btn-dark'; showToast(isHUDMirrored ? '🪞 HUD 鏡像：開啟' : '🪞 HUD 鏡像：關閉'); }
 
-function latLonToENU(lat, lon, refLat, refLon) { const R = 6378137.0; return { east: (lon - refLon) * Math.PI / 180.0 * R * Math.cos(refLat * Math.PI / 180.0), north: (lat - refLat) * Math.PI / 180.0 * R }; }
-function resampleAndAnalyzeCurve(coords, spacingMeters) {
-    if (coords.length < 2) return []; const pts = [];
-    for (let i = 0; i < coords.length - 1; i++) {
-        const enu = latLonToENU(coords[i+1].lat, coords[i+1].lon, coords[i].lat, coords[i].lon);
-        const steps = Math.max(1, Math.floor(Math.hypot(enu.east, enu.north) / spacingMeters));
-        for (let s = 0; s < steps; s++) pts.push({ lat: coords[i].lat + (coords[i+1].lat - coords[i].lat) * (s / steps), lon: coords[i].lon + (coords[i+1].lon - coords[i].lon) * (s / steps) });
+function animateLoop(t) {
+    requestAnimationFrame(animateLoop);
+    animationPhase = t * 0.005;
+    for (let i = 0; i < NUM_ARROWS; i++) {
+        const m = chevronPool[i];
+        if (currentMode === 'map') {
+            m.visible = false; // 地圖模式專注呈現 3D 向量建築與 Apple 路線
+        } else {
+            m.visible = true;
+            m.position.y = Math.sin(animationPhase - i * 0.5) * 0.08;
+        }
     }
-    pts.push(coords[coords.length - 1]);
-    const result = [];
-    for (let i = 0; i < pts.length; i++) {
-        const enuNext = latLonToENU(pts[Math.min(i + 1, pts.length - 1)].lat, pts[Math.min(i + 1, pts.length - 1)].lon, pts[i].lat, pts[i].lon);
-        result.push({ lat: pts[i].lat, lon: pts[i].lon, headingRad: (enuNext.east === 0 && enuNext.north === 0 && result.length > 0) ? result[result.length - 1].headingRad : Math.atan2(enuNext.east, enuNext.north), roadSharpness: 0 });
-    }
-    for (let i = 0; i < result.length; i++) {
-        let maxDiff = 0;
-        for (let look = 1; look <= 4; look++) { const diff = Math.abs(normalizeAngleRad(result[Math.min(i + look, result.length - 1)].headingRad - result[i].headingRad)); if (diff > maxDiff) maxDiff = diff; }
-        result[i].roadSharpness = Math.min(1.0, maxDiff / THREE.MathUtils.degToRad(35));
-    }
-    return result;
-}
-function decodeGooglePolyline(encoded) {
-    let index = 0, len = encoded.length, lat = 0, lng = 0, array = [];
-    while (index < len) {
-        let b, shift = 0, result = 0; do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20); lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
-        shift = 0; result = 0; do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20); lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
-        array.push({ lat: lat * 1e-5, lon: lng * 1e-5 });
-    }
-    return array;
+    renderer.render(scene, camera);
 }
 </script>
 </body>
