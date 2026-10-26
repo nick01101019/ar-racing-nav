@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Apple 導航">
-    <title>Apple Maps 3D 旗艦導航 (GPU零耗能 + 避開收費多路線版)</title>
+    <title>Apple Maps 3D 旗艦導航 (真實定位 + 完整地址驗證 + 避開收費版)</title>
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -55,17 +55,17 @@
             overflow: hidden;
         }
 
-        .top-container { width: 100%; max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+        .top-container { width: 100%; max-width: 450px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
 
-        /* ==================== A. 新潮搜尋與「避開收費道路」偏好面板 ==================== */
+        /* ==================== A. 搜尋與「避開收費道路 + 完整地址」面板 ==================== */
         #search-card {
             pointer-events: auto; position: relative; width: 100%;
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-radius: 24px; padding: 12px 14px;
-            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.14); border: 1px solid rgba(255, 255, 255, 0.9);
-            display: none; flex-direction: column; gap: 10px;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16); border: 1px solid rgba(255, 255, 255, 0.9);
+            display: flex; flex-direction: column; gap: 10px;
         }
-        body.dark-mode #search-card { background: rgba(34, 34, 36, 0.95); border-color: rgba(255,255,255,0.12); color: #fff; }
+        body.dark-mode #search-card { background: rgba(34, 34, 36, 0.96); border-color: rgba(255,255,255,0.12); color: #fff; }
         
         .search-row { display: flex; gap: 8px; align-items: center; width: 100%; }
         .search-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
@@ -81,7 +81,7 @@
             padding: 11px 16px; font-size: 14px; font-weight: 800; cursor: pointer; flex-shrink: 0;
         }
 
-        /* 路線偏好過濾晶片列 (避開收費道路 / 避開高速公路 / 汽機車切換) */
+        /* 路線偏好過濾晶片列 */
         .route-filter-chips {
             display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none;
         }
@@ -97,7 +97,7 @@
         }
         body.dark-mode .filter-chip.active { background: rgba(10, 132, 255, 0.22); color: #64d2ff; border-color: #0a84ff; }
 
-        /* 多路線選擇器 (當規劃出多條替代路線時顯示：例如「避開收費」vs「最快路線」) */
+        /* 多路線選擇器 */
         #route-options-selector {
             display: none; gap: 8px; width: 100%; padding-top: 4px;
         }
@@ -114,23 +114,37 @@
         body.dark-mode .opt-meta { color: #fff; }
         .opt-sub { font-size: 10px; font-weight: 600; color: #8e8e93; }
 
+        /* 搜尋建議清單 (強化下方完整地址顯示，支援多行完整門牌閱讀) */
         #suggestions-box {
-            position: absolute; top: calc(100% + 8px); left: 0; width: 100%; max-height: 230px; overflow-y: auto;
-            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border-radius: 18px; box-shadow: 0 16px 36px rgba(0,0,0,0.18);
+            position: absolute; top: calc(100% + 8px); left: 0; width: 100%; max-height: 280px; overflow-y: auto;
+            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            border-radius: 18px; box-shadow: 0 18px 40px rgba(0,0,0,0.22); border: 1px solid rgba(0,122,255,0.25);
             display: none; flex-direction: column; z-index: 1000;
         }
-        body.dark-mode #suggestions-box { background: rgba(44, 44, 46, 0.98); }
-        .suggestion-item { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
+        body.dark-mode #suggestions-box { background: rgba(40, 40, 44, 0.98); border-color: rgba(255,255,255,0.15); }
+        .suggestion-item {
+            padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.06);
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; cursor: pointer;
+        }
         body.dark-mode .suggestion-item { border-bottom-color: rgba(255,255,255,0.08); }
-        .sug-title { font-size: 14px; font-weight: 700; color: #1c1c1e; }
+        .suggestion-item:active { background: rgba(0, 122, 255, 0.12); }
+        .sug-info-col { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+        .sug-title { font-size: 15px; font-weight: 800; color: #1c1c1e; line-height: 1.25; }
         body.dark-mode .sug-title { color: #fff; }
-        .sug-sub { font-size: 11px; color: #8e8e93; margin-top: 2px; }
-        .sug-dist { font-size: 12px; font-weight: 700; color: #007aff; background: rgba(0,122,255,0.1); padding: 4px 8px; border-radius: 8px; flex-shrink: 0; }
+        .sug-addr-full {
+            font-size: 12px; font-weight: 600; color: #48484a; line-height: 1.35;
+            background: rgba(0, 0, 0, 0.04); padding: 4px 8px; border-radius: 6px;
+            word-break: break-all;
+        }
+        body.dark-mode .sug-addr-full { color: #d1d1d6; background: rgba(255, 255, 255, 0.06); }
+        .sug-dist {
+            font-size: 12px; font-weight: 800; color: #007aff; background: rgba(0,122,255,0.1);
+            padding: 4px 8px; border-radius: 8px; flex-shrink: 0; margin-top: 2px;
+        }
 
-        /* ==================== B. 1:1 圖 2 原生雙層深空灰導航看板 ==================== */
+        /* ==================== B. 原生雙層深空灰導航看板 (僅在導航啟動後顯示) ==================== */
         #apple-top-banner {
-            pointer-events: auto; display: flex; flex-direction: column; width: 100%;
+            pointer-events: auto; display: none; flex-direction: column; width: 100%;
             border-radius: 26px; overflow: hidden; cursor: pointer;
             box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
             backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
@@ -143,17 +157,17 @@
         .banner-icon-wrap svg { width: 48px; height: 48px; }
         .banner-text-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }
         .banner-primary-text {
-            font-size: 23px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;
+            font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.22;
         }
-        .banner-dist-sub { font-size: 13px; font-weight: 700; color: #aeaeb2; margin-top: 2px; display: none; }
+        .banner-dist-sub { font-size: 14px; font-weight: 700; color: #aeaeb2; margin-top: 2px; }
         
         .banner-lower {
             background: rgba(72, 73, 77, 0.92); padding: 10px 22px 13px 22px;
             display: flex; align-items: center; justify-content: space-between;
             border-top: 1px solid rgba(255, 255, 255, 0.08); position: relative;
         }
-        .banner-next-left { display: flex; align-items: center; gap: 12px; color: #d1d1d6; font-size: 18px; font-weight: 700; min-width: 0; }
+        .banner-next-left { display: flex; align-items: center; gap: 12px; color: #d1d1d6; font-size: 17px; font-weight: 700; min-width: 0; }
         .banner-next-left svg { width: 22px; height: 22px; fill: #d1d1d6; flex-shrink: 0; }
         .banner-next-street { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .toll-free-badge {
@@ -167,7 +181,7 @@
 
         /* ==================== 中間懸浮控制區 ==================== */
         .floating-Controls-Area {
-            position: relative; flex: 1; width: 100%; max-width: 440px; margin: 0 auto; pointer-events: none;
+            position: relative; flex: 1; width: 100%; max-width: 450px; margin: 0 auto; pointer-events: none;
         }
         .speed-floating-badge {
             pointer-events: auto; position: absolute; top: 10px; left: 2px;
@@ -194,7 +208,6 @@
             box-shadow: 0 6px 18px rgba(255, 59, 48, 0.35); display: none; align-items: center; gap: 4px;
         }
 
-        /* 1:1 圖 2 左下角白色圓形藍箭頭定位鈕 */
         .apple-loc-fab {
             pointer-events: auto; position: absolute; bottom: 14px; left: 2px;
             width: 48px; height: 48px; border-radius: 50%;
@@ -206,28 +219,46 @@
         .apple-loc-fab:active { transform: scale(0.92); }
         .apple-loc-fab svg { width: 22px; height: 22px; fill: #007aff; transform: rotate(35deg); }
 
-        /* ==================== 底部區塊：1:1 圖 2 純白毛玻璃 ETA 卡片 ==================== */
-        .bottom-container { width: 100%; max-width: 440px; margin: 0 auto; }
+        /* ==================== 底部區塊：含「目的地完整地址驗證列」的純白毛玻璃 ETA 卡片 ==================== */
+        .bottom-container { width: 100%; max-width: 450px; margin: 0 auto; }
         #apple-bottom-sheet {
             pointer-events: auto; width: 100%;
-            background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-            border-radius: 30px; padding: 10px 20px 14px 20px;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); border: 1px solid rgba(255, 255, 255, 0.9);
-            display: flex; flex-direction: column; gap: 10px;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border-radius: 28px; padding: 10px 18px 14px 18px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16); border: 1px solid rgba(255, 255, 255, 0.9);
+            display: flex; flex-direction: column; gap: 8px;
         }
-        body.dark-mode #apple-bottom-sheet { background: rgba(30, 30, 32, 0.94); border-color: rgba(255, 255, 255, 0.12); }
+        body.dark-mode #apple-bottom-sheet { background: rgba(30, 30, 32, 0.95); border-color: rgba(255, 255, 255, 0.12); }
         .sheet-grabber { width: 36px; height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.18); margin: 0 auto; }
         body.dark-mode .sheet-grabber { background: rgba(255, 255, 255, 0.25); }
 
+        /* 新增：底部目的地名稱與完整地址確認欄 (清楚驗證搜尋地點正確性) */
+        .dest-verify-bar {
+            display: flex; flex-direction: column; gap: 2px;
+            background: rgba(0, 122, 255, 0.07); border-left: 3.5px solid #007aff;
+            padding: 6px 10px; border-radius: 6px 10px 10px 6px;
+        }
+        body.dark-mode .dest-verify-bar { background: rgba(10, 132, 255, 0.15); }
+        .dest-verify-title {
+            font-size: 13px; font-weight: 800; color: #007aff;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        body.dark-mode .dest-verify-title { color: #64d2ff; }
+        .dest-verify-address {
+            font-size: 11px; font-weight: 600; color: #48484a; line-height: 1.3;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        body.dark-mode .dest-verify-address { color: #d1d1d6; }
+
         .eta-three-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; text-align: center; padding: 2px 0; }
         .eta-col { display: flex; flex-direction: column; align-items: center; }
-        .eta-big-num { font-size: 27px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .eta-big-num { font-size: 25px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
         body.dark-mode .eta-big-num { color: #ffffff; }
-        .eta-small-lbl { font-size: 13px; font-weight: 600; color: #8e8e93; margin-top: 2px; }
+        .eta-small-lbl { font-size: 12px; font-weight: 600; color: #8e8e93; margin-top: 2px; }
 
         .sheet-actions-row {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
-            padding-top: 8px; border-top: 1px solid rgba(0, 0, 0, 0.06);
+            padding-top: 6px; border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
         body.dark-mode .sheet-actions-row { border-top-color: rgba(255, 255, 255, 0.08); }
         .action-chip {
@@ -241,7 +272,7 @@
         .chip-sim { background: #007aff !important; color: #ffffff !important; }
         .chip-route { background: rgba(52, 199, 89, 0.14) !important; color: #28a745 !important; }
 
-        /* 1:1 圖 2 自車游標：正圓形莫蘭迪藍灰底 + 白色立體導航箭頭 (絕不變形壓扁) */
+        /* 自車游標 */
         .apple-puck-outer {
             width: 48px; height: 48px; border-radius: 50%;
             background: #8fa4bc; border: 3px solid #ffffff;
@@ -256,17 +287,17 @@
         /* 橫向模式自適應分欄 */
         @media (orientation: landscape) {
             #ui-layer { flex-direction: row; align-items: stretch; gap: 12px; }
-            .top-container { width: 340px; max-width: 38vw; margin: 0; justify-content: flex-start; }
+            .top-container { width: 350px; max-width: 40vw; margin: 0; justify-content: flex-start; }
             .floating-Controls-Area { flex: 1; max-width: none; }
             .speed-floating-badge { top: auto; bottom: 10px; left: 10px; }
             .apple-loc-fab { bottom: 10px; right: 10px; left: auto; }
-            .bottom-container { width: 330px; max-width: 38vw; margin: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+            .bottom-container { width: 340px; max-width: 40vw; margin: 0; display: flex; flex-direction: column; justify-content: flex-end; }
         }
     </style>
 </head>
 <body>
 
-<div id="hud-toast">Apple 3D 導航已就緒</div>
+<div id="hud-toast">正在取得 GPS 定位...</div>
 
 <!-- 全螢幕 GPU WebGL 3D 向量地圖 -->
 <div id="map"></div>
@@ -279,15 +310,15 @@
 <!-- 主 UI 層 -->
 <div id="ui-layer">
     <div class="top-container">
-        <!-- A. 搜尋與「避開收費道路」多路線選擇面板 -->
+        <!-- A. 搜尋與「避開收費道路 + 詳細地址驗證」面板 (開機預設展開，不亂跑假路線) -->
         <div id="search-card">
             <div class="search-row">
                 <div class="search-input-wrap">
                     <input type="text" id="dest-input" placeholder="搜尋地點、企業或貼上地址..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onfocus="unlockInputOnFocus(this)" oninput="onSearchInput(this.value)" onpaste="onPasteAddress(event)">
                     <button class="clear-btn" id="clear-input-btn" onclick="clearSearchInput()">✕</button>
                 </div>
-                <button class="start-route-btn" onclick="planRoute()">搜尋</button>
-                <button class="filter-chip" onclick="hideSearchOverlay()" style="padding:10px;">✕</button>
+                <button class="start-route-btn" onclick="planRoute()">導航</button>
+                <button class="filter-chip" id="close-search-btn" onclick="hideSearchOverlay()" style="padding:10px; display:none;">✕</button>
             </div>
 
             <!-- 路線規劃條件開關：預設開啟「避開收費道路」 -->
@@ -297,25 +328,26 @@
                 <button class="filter-chip" id="chip-vehicle" onclick="toggleVehicleMode()">🛵 機車模式</button>
             </div>
 
-            <!-- 多路線方案切換器 (自動列出「免收費路線」與「最快路線」) -->
+            <!-- 多路線方案切換器 -->
             <div id="route-options-selector"></div>
 
+            <!-- 下拉建議清單 (每筆皆附帶完整縣市區里門牌地址) -->
             <div id="suggestions-box"></div>
         </div>
 
-        <!-- B. 1:1 圖 2 雙層深空灰導航看板 (點擊可展開搜尋與路線選項) -->
+        <!-- B. 雙層深空灰導航看板 (規劃路線後才顯示，不再寫死五工三路) -->
         <div id="apple-top-banner" onclick="showSearchOverlay()">
             <div class="banner-upper">
                 <div class="banner-icon-wrap" id="banner-main-icon"></div>
                 <div class="banner-text-wrap">
-                    <div class="banner-primary-text" id="banner-main-text">從五工二路62巷出發</div>
-                    <div class="banner-dist-sub" id="banner-dist-sub">22 公尺後</div>
+                    <div class="banner-primary-text" id="banner-main-text">準備出發</div>
+                    <div class="banner-dist-sub" id="banner-dist-sub">計算距離中...</div>
                 </div>
             </div>
             <div class="banner-lower">
                 <div class="banner-next-left">
                     <span id="banner-sub-icon"></span>
-                    <span class="banner-next-street" id="banner-sub-text">五工三路</span>
+                    <span class="banner-next-street" id="banner-sub-text">順行前往目的地</span>
                 </div>
                 <span class="toll-free-badge" id="toll-status-badge">💲免收費路線</span>
                 <div class="banner-grabber"></div>
@@ -335,34 +367,41 @@
 
         <div id="apex-pill">⚠️ 彎道建議 30 KM/H</div>
 
-        <button class="apple-loc-fab" onclick="recenterCamera()" title="對齊車頭朝上">
+        <button class="apple-loc-fab" onclick="recenterCamera()" title="鎖定目前真實位置">
             <svg viewBox="0 0 24 24">
                 <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
             </svg>
         </button>
     </div>
 
-    <!-- 底部：1:1 圖 2 純白毛玻璃 ETA 卡片 -->
+    <!-- 底部：含「目的地完整地址確認欄」的純白毛玻璃 ETA 卡片 -->
     <div class="bottom-container">
         <div id="apple-bottom-sheet">
             <div class="sheet-grabber"></div>
+            
+            <!-- 目的地名稱與完整地址驗證欄 (確保搜尋地點 100% 正確) -->
+            <div class="dest-verify-bar" id="dest-verify-bar">
+                <div class="dest-verify-title" id="dest-verify-title">📍 尚未設定目的地 (點擊地圖或上方搜尋)</div>
+                <div class="dest-verify-address" id="dest-verify-address">🏠 正在定位您的目前所在位置...</div>
+            </div>
+
             <div class="eta-three-cols">
                 <div class="eta-col">
-                    <div class="eta-big-num" id="eta-time">13:51</div>
+                    <div class="eta-big-num" id="eta-time">--:--</div>
                     <div class="eta-small-lbl">抵達</div>
                 </div>
                 <div class="eta-col">
-                    <div class="eta-big-num" id="eta-min">32</div>
+                    <div class="eta-big-num" id="eta-min">--</div>
                     <div class="eta-small-lbl">分鐘</div>
                 </div>
                 <div class="eta-col">
-                    <div class="eta-big-num" id="eta-km">16</div>
+                    <div class="eta-big-num" id="eta-km">--</div>
                     <div class="eta-small-lbl">公里</div>
                 </div>
             </div>
             <div class="sheet-actions-row">
                 <button class="action-chip chip-sim" id="sim-btn" onclick="toggleSimulationDrive()">▶ 模擬巡航</button>
-                <button class="action-chip chip-route" onclick="showSearchOverlay()">💲 路線選項</button>
+                <button class="action-chip chip-route" onclick="showSearchOverlay()">🔍 搜尋/選項</button>
                 <button class="action-chip" id="ar-btn" onclick="toggleARCameraPip()">📷 實景窗</button>
                 <button class="action-chip" id="theme-btn" onclick="toggleMapTheme()">🌙 深色</button>
             </div>
@@ -371,32 +410,31 @@
 </div>
 
 <script>
-// ==================== 全域狀態變數 (零冗餘最省資源架構) ====================
+// ==================== 全域狀態變數 ====================
 let map = null, userMarker = null, puckArrowEl = null, destMarker = null;
 
-// 1:1 對齊圖 2 座標與視角：新北市新莊區五工三路62巷 / 興化公園旁
-let userLat = 25.06335, userLon = 121.45235;
+// 預設初始視野 (桃園龜山 / 林口 / 新莊中心點，待真實 GPS 一進來立即覆蓋！)
+let userLat = 25.0465, userLon = 121.3785;
+let hasAcquiredRealGPS = false;
 let currentSpeedKmh = 0;
-let smoothedYaw = 42, headingOffsetDeg = 0, hasInitializedYaw = false;
+let smoothedYaw = 0, headingOffsetDeg = 0, hasInitializedYaw = false;
 let isMapFollowingUser = true;
 let isDarkMode = false;
 let isARPipOpen = false;
 let isVoiceEnabled = true;
 let lastSpokenKey = '';
 
-// 路線規劃過濾條件：預設開啟「避開收費道路 (avoidTolls = true)」與「避開國道 (avoidHighways = true)」
 let avoidTolls = true;
 let avoidHighways = true;
 let vehicleMode = 'scooter';
 
-// 多路線候選池 (儲存「免收費路線」與「最快備選路線」)
 let candidateRoutes = [];
 let selectedRouteIndex = 0;
 let activeRouteCoords = [];
 let routeSteps = [];
 let passedStepIndex = 0;
-let totalRouteMeters = 16200;
-let targetDest = { lat: 25.0405, lon: 121.5601, name: '臺北大巨蛋' };
+let totalRouteMeters = 0;
+let targetDest = null;
 
 let isSimulatingDrive = false;
 let simAnimFrameId = null;
@@ -406,7 +444,6 @@ let preSimSnapshot = null;
 
 let toastTimer = null, searchDebounceTimer = null;
 
-// 使用包含完整 3D 建築高度、公園綠地與商店 POI 的 OpenFreeMap Liberty 高清向量圖資
 const MAP_STYLES = {
     day: 'https://tiles.openfreemap.org/styles/liberty',
     night: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
@@ -426,47 +463,51 @@ const APPLE_SVGS = {
 
 const CORPORATE_ALIASES = {
     "睿能": "Gogoro", "睿能創意": "Gogoro", "睿能創意股份有限公司": "Gogoro",
-    "三陽": "SYM", "三陽工業": "SYM", "光陽": "KYMCO"
+    "三陽": "SYM", "三陽工業": "SYM", "光陽": "KYMCO", "華亞": "華亞科技園區"
 };
 
+// 內建熱門地標快取 (均附帶完整郵遞區號、縣市區里與門牌號碼)
 const TAIWAN_POI_CACHE = [
-    { name: "臺北大巨蛋", aliases: ["台北大巨蛋", "大巨蛋", "忠孝東路四段515號"], lat: 25.0405, lon: 121.5601, addr: "臺北市信義區忠孝東路四段515號" },
-    { name: "睿能創意 (Gogoro 台灣總部)", aliases: ["睿能", "睿能創意", "Gogoro總部", "頂湖路33號"], lat: 25.0457, lon: 121.3789, addr: "桃園市龜山區頂湖路33號" },
-    { name: "台北101", aliases: ["臺北101", "101大樓", "信義路五段7號"], lat: 25.0339, lon: 121.5644, addr: "臺北市信義區信義路五段7號" },
-    { name: "台北車站", aliases: ["臺北車站", "北車", "台北火車站"], lat: 25.0478, lon: 121.5170, addr: "臺北市中正區北平西路3號" },
-    { name: "新北產業園區 (五工三路)", aliases: ["五股工業區", "五工二路", "五工三路", "興化公園"], lat: 25.0645, lon: 121.4552, addr: "新北市新莊區五工三路" },
-    { name: "林口長庚紀念醫院", aliases: ["林口長庚", "長庚醫院"], lat: 25.0615, lon: 121.3676, addr: "桃園市龜山區復興街5號" }
+    { name: "睿能創意 (Gogoro 台灣總部)", aliases: ["睿能", "睿能創意", "Gogoro總部", "頂湖路33號"], lat: 25.0457, lon: 121.3789, addr: "333 桃園市龜山區大崗里頂湖路33號" },
+    { name: "睿能創意 (Gogoro 台北辦公室)", aliases: ["睿能台北", "gogoro 台北", "民生東路三段128號"], lat: 25.0578, lon: 121.5435, addr: "105 臺北市松山區民生東路三段128號" },
+    { name: "國立體育大學", aliases: ["林口體大", "國體大", "體育大學", "文化一路250號"], lat: 25.0365, lon: 121.3879, addr: "333 桃園市龜山區文化一路250號" },
+    { name: "林口長庚紀念醫院", aliases: ["林口長庚", "長庚醫院", "復興街5號"], lat: 25.0615, lon: 121.3676, addr: "333 桃園市龜山區公西里復興街5號" },
+    { name: "華亞科技園區", aliases: ["華亞園區", "科技二路", "廣達電腦"], lat: 25.0468, lon: 121.3755, addr: "333 桃園市龜山區文化里科技二路" },
+    { name: "臺北大巨蛋", aliases: ["台北大巨蛋", "大巨蛋", "忠孝東路四段515號"], lat: 25.0405, lon: 121.5601, addr: "110 臺北市信義區忠孝東路四段515號" },
+    { name: "台北101", aliases: ["臺北101", "101大樓", "信義路五段7號"], lat: 25.0339, lon: 121.5644, addr: "110 臺北市信義區西村里信義路五段7號" },
+    { name: "台北車站", aliases: ["臺北車站", "北車", "台北火車站"], lat: 25.0478, lon: 121.5170, addr: "100 臺北市中正區黎明里北平西路3號" },
+    { name: "新北產業園區", aliases: ["五股工業區", "五工二路", "五工三路", "晶冠廣場"], lat: 25.0645, lon: 121.4552, addr: "242 新北市新莊區五工路95號" },
+    { name: "板橋車站", aliases: ["板橋火車站", "高鐵板橋站"], lat: 25.0142, lon: 121.4637, addr: "220 新北市板橋區縣民大道二段7號" },
+    { name: "桃園火車站", aliases: ["桃園車站", "台鐵桃園站"], lat: 24.9892, lon: 121.3135, addr: "330 桃園市桃園區武陵里中正路1號" }
 ];
 
-// ==================== 1. GPU 原生動態路名氣泡合成器 (0 DOM 污染、永不變形爆框) ====================
-// 直接在記憶體繪製高解析度 Retinal 2x 圓角帶尖角路名氣泡，交由 WebGL Symbol Layer 渲染！
+// ==================== 1. GPU 原生動態路名氣泡合成器 ====================
 function registerRoadBubbleImage(id, text, bgColor, textColor) {
     if (!map) return;
     const dpr = 2;
-    const font = `800 ${14 * dpr}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`;
+    const font = `800 ${13 * dpr}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     ctx.font = font;
 
-    const cleanText = (text || '前方道路').slice(0, 10);
+    const cleanText = (text || '導航路段').slice(0, 12);
     const textMetrics = ctx.measureText(cleanText);
-    const padX = 14 * dpr;
+    const padX = 13 * dpr;
     const boxW = Math.ceil(textMetrics.width + padX * 2);
-    const boxH = 34 * dpr;
+    const boxH = 32 * dpr;
     const tipH = 7 * dpr;
     const margin = 6 * dpr;
 
     canvas.width = boxW + margin * 2;
     canvas.height = boxH + tipH + margin * 2;
 
-    const x = margin, y = margin, r = 11 * dpr;
+    const x = margin, y = margin, r = 10 * dpr;
 
     ctx.save();
     ctx.shadowColor = bgColor === '#007aff' ? 'rgba(0, 122, 255, 0.38)' : 'rgba(0, 0, 0, 0.22)';
     ctx.shadowBlur = 8 * dpr;
     ctx.shadowOffsetY = 3 * dpr;
 
-    // 繪製圓角矩形連同底部中央指向尖角
     ctx.fillStyle = bgColor;
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -474,7 +515,6 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     ctx.quadraticCurveTo(x + boxW, y, x + boxW, y + r);
     ctx.lineTo(x + boxW, y + boxH - r);
     ctx.quadraticCurveTo(x + boxW, y + boxH, x + boxW - r, y + boxH);
-    // 底部小尖角
     ctx.lineTo(x + boxW / 2 + tipH, y + boxH);
     ctx.lineTo(x + boxW / 2, y + boxH + tipH);
     ctx.lineTo(x + boxW / 2 - tipH, y + boxH);
@@ -486,7 +526,6 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     ctx.fill();
     ctx.restore();
 
-    // 繪製銳利文字
     ctx.font = font;
     ctx.fillStyle = textColor;
     ctx.textAlign = 'center';
@@ -498,10 +537,10 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     map.addImage(id, { width: canvas.width, height: canvas.height, data: imgData.data }, { pixelRatio: dpr });
 }
 
-// ==================== 2. 地圖初始化與圖 2 Apple Maps 3D 建築/綠地/道路調校 ====================
+// ==================== 2. 地圖初始化與真實位置反向地址解析 ====================
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('banner-main-icon').innerHTML = APPLE_SVGS.departRing;
-    document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.right;
+    document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.straight;
     initMapEngine();
     initSensors();
     lockInputAgainstVibration();
@@ -512,14 +551,13 @@ function initMapEngine() {
         container: 'map',
         style: MAP_STYLES.day,
         center: [userLon, userLat],
-        zoom: 17.5,
-        pitch: 56,
-        bearing: 42,
+        zoom: 16.8,
+        pitch: 54,
+        bearing: 0,
         antialias: true,
-        fadeDuration: 0 // 減少無謂的透明度重繪，極致省電
+        fadeDuration: 0
     });
 
-    // 1:1 圖 2 自車游標：採用 viewport 對齊確保圓盤永遠正圓不變形，內部箭頭獨立隨車頭旋轉！
     const puckOuter = document.createElement('div');
     puckOuter.className = 'apple-puck-outer';
     puckOuter.innerHTML = `
@@ -536,21 +574,44 @@ function initMapEngine() {
 
     map.on('load', () => {
         applyAppleMapsShaderStyle();
-        loadInitialAppleDemoRoute();
     });
 
     map.on('dragstart', () => { isMapFollowingUser = false; });
 
-    map.on('click', (e) => {
+    // 點擊地圖任一點時，自動反向查詢該點真實地址並規劃路線
+    map.on('click', async (e) => {
         if (document.getElementById('search-card').style.display !== 'none') {
-            document.getElementById('dest-input').value = `${e.lngLat.lat.toFixed(5)},${e.lngLat.lng.toFixed(5)}`;
+            const cLat = e.lngLat.lat, cLon = e.lngLat.lng;
+            showToast('📍 正在解析點擊處地址...');
+            const revInfo = await reverseGeocodeAddress(cLat, cLon);
+            document.getElementById('dest-input').value = revInfo.title;
             lockInputAgainstVibration();
-            executeMultiRoutePlanning(e.lngLat.lat, e.lngLat.lng, '地圖自選點');
+            executeMultiRoutePlanning(cLat, cLon, revInfo.title, revInfo.fullAddress);
         }
     });
 }
 
-// 精準調校圖層配色，完美還原圖 2 的「深灰寬馬路 + 純白立體 3D 建築群 + 興化公園嫩綠草地」
+// 反向地理編碼：根據經緯度查出真實街道與完整地址
+async function reverseGeocodeAddress(lat, lon) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=zh-TW`;
+        const data = await fetchJsonWithTimeout(url, 4000);
+        if (data && data.address) {
+            const a = data.address;
+            const city = a.city || a.county || '';
+            const dist = a.suburb || a.town || a.district || '';
+            const village = a.village || a.neighbourhood || '';
+            const road = a.road || a.pedestrian || '';
+            const num = a.house_number ? `${a.house_number}號` : '';
+            const postcode = a.postcode || '';
+            const fullAddr = `${postcode} ${city}${dist}${village}${road}${num}`.trim();
+            const shortTitle = data.name || (road ? `${dist}${road}${num}` : '地圖自選位置');
+            return { title: shortTitle, fullAddress: fullAddr || data.display_name, roadName: road || shortTitle };
+        }
+    } catch (e) {}
+    return { title: '自選座標點', fullAddress: `經緯度: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, roadName: '目前道路' };
+}
+
 function applyAppleMapsShaderStyle() {
     const style = map.getStyle();
     if (!style || !style.layers) return;
@@ -564,19 +625,15 @@ function applyAppleMapsShaderStyle() {
 
     style.layers.forEach(layer => {
         const id = layer.id.toLowerCase();
-        // 1. 將地面背景調為柔和淺灰 (#e8ecf2)，襯托純白 3D 建築物
         if (!isDarkMode && layer.type === 'background') {
             try { map.setPaintProperty(layer.id, 'background-color', '#e9edf2'); } catch (e) {}
         }
-        // 2. 公園與綠地染成圖 2 的蘋果鮮嫩綠 (#b5e890)
         if (!isDarkMode && (id.includes('park') || id.includes('grass') || id.includes('wood') || id.includes('green')) && layer.type === 'fill') {
             try { map.setPaintProperty(layer.id, 'fill-color', '#b5e890'); } catch (e) {}
         }
-        // 3. 道路本體染成圖 2 的高對比深石板灰 (#9ca3af)，讓道路在淺色背景與白色建築間無比清晰！
         if (!isDarkMode && id.includes('road') && !id.includes('casing') && layer.type === 'line') {
             try { map.setPaintProperty(layer.id, 'line-color', '#9aa3af'); } catch (e) {}
         }
-        // 4. 3D 建築物調整為圖 2 的純白高光立體切面 (#f5f6f8)，並降低觸發層級至 zoom 13
         if (layer.type === 'fill-extrusion' || id.includes('building-3d')) {
             try {
                 map.setLayerZoomRange(layer.id, 13, 24);
@@ -584,7 +641,6 @@ function applyAppleMapsShaderStyle() {
                 map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.94);
             } catch (e) {}
         }
-        // 5. 所有文字優先顯示正體中文
         if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
             try {
                 map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name:zh-Hant'], ['get', 'name:zh'], ['get', 'name']]);
@@ -593,25 +649,16 @@ function applyAppleMapsShaderStyle() {
     });
 
     const layers = map.getStyle().layers;
-    // 找到 3D 建築圖層，將藍色導航路線放在「馬路之上、3D 建築與路名氣泡之下」
     let buildingLayerId = layers.find(l => l.type === 'fill-extrusion')?.id ||
                           layers.find(l => l.type === 'symbol' && l.layout && l.layout['text-field'])?.id;
 
-    // 註冊備選路線資料源 (灰色次要路線) 與主導航路線資料源 (Apple 寶石藍路線)
     if (!map.getSource('alt-route-source')) {
-        map.addSource('alt-route-source', {
-            'type': 'geojson',
-            'data': { 'type': 'FeatureCollection', 'features': [] }
-        });
+        map.addSource('alt-route-source', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
     }
     if (!map.getSource('main-route-source')) {
-        map.addSource('main-route-source', {
-            'type': 'geojson',
-            'data': { 'type': 'FeatureCollection', 'features': [] }
-        });
+        map.addSource('main-route-source', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
     }
 
-    // 備選路線圖層 (淺藍灰色)
     if (!map.getLayer('alt-route-line')) {
         map.addLayer({
             'id': 'alt-route-line',
@@ -626,7 +673,6 @@ function applyAppleMapsShaderStyle() {
         }, buildingLayerId);
     }
 
-    // 主導航路線深藍外框 (#004bb5)
     if (!map.getLayer('route-casing')) {
         map.addLayer({
             'id': 'route-casing',
@@ -641,7 +687,6 @@ function applyAppleMapsShaderStyle() {
         }, buildingLayerId);
     }
 
-    // 主導航路線核心亮藍光帶 (#007aff)
     if (!map.getLayer('route-core')) {
         map.addLayer({
             'id': 'route-core',
@@ -656,28 +701,10 @@ function applyAppleMapsShaderStyle() {
         }, buildingLayerId);
     }
 
-    // GPU WebGL 原生懸浮路牌氣泡圖層 (置於最頂層，100% 復刻圖 2 的藍底與白底圓角路名框，永不爆框！)
-    registerRoadBubbleImage('bubble-blue', '五工三路62巷', '#007aff', '#ffffff');
-    registerRoadBubbleImage('bubble-white', '五工三路50巷', '#ffffff', '#1c1c1e');
-
     if (!map.getSource('road-bubbles-source')) {
         map.addSource('road-bubbles-source', {
             'type': 'geojson',
-            'data': {
-                'type': 'FeatureCollection',
-                'features': [
-                    {
-                        'type': 'Feature',
-                        'properties': { 'icon': 'bubble-blue' },
-                        'geometry': { 'type': 'Point', 'coordinates': [121.45198, 25.06325] }
-                    },
-                    {
-                        'type': 'Feature',
-                        'properties': { 'icon': 'bubble-white' },
-                        'geometry': { 'type': 'Point', 'coordinates': [121.45258, 25.06288] }
-                    }
-                ]
-            }
+            'data': { 'type': 'FeatureCollection', 'features': [] }
         });
     }
 
@@ -702,14 +729,15 @@ function applyAppleMapsShaderStyle() {
 
 function updateWebGLRoadBubbles(primaryText, primaryLon, primaryLat, secondaryText, secLon, secLat) {
     if (!map || !map.getSource('road-bubbles-source')) return;
-    registerRoadBubbleImage('bubble-blue', primaryText || '導航路線', '#007aff', '#ffffff');
-    const features = [
-        {
+    const features = [];
+    if (primaryText && primaryLon && primaryLat) {
+        registerRoadBubbleImage('bubble-blue', primaryText, '#007aff', '#ffffff');
+        features.push({
             'type': 'Feature',
             'properties': { 'icon': 'bubble-blue' },
             'geometry': { 'type': 'Point', 'coordinates': [primaryLon, primaryLat] }
-        }
-    ];
+        });
+    }
     if (secondaryText && secLon && secLat) {
         registerRoadBubbleImage('bubble-white', secondaryText, '#ffffff', '#1c1c1e');
         features.push({
@@ -721,7 +749,7 @@ function updateWebGLRoadBubbles(primaryText, primaryLon, primaryLat, secondaryTe
     map.getSource('road-bubbles-source').setData({ 'type': 'FeatureCollection', 'features': features });
 }
 
-// ==================== 3. 避開收費道路 & 多路線規劃引擎 (Valhalla + OSRM 雙核心) ====================
+// ==================== 3. 避開收費道路 & 修正版 Valhalla/OSRM 轉向解析 ====================
 function toggleRouteOption(type) {
     if (type === 'tolls') {
         avoidTolls = !avoidTolls;
@@ -738,7 +766,7 @@ function toggleRouteOption(type) {
         showToast(avoidHighways ? '🛣️ 已啟用「避開國道高架」' : '🛣️ 已允許行駛國道');
     }
     if (targetDest) {
-        executeMultiRoutePlanning(targetDest.lat, targetDest.lon, targetDest.name);
+        executeMultiRoutePlanning(targetDest.lat, targetDest.lon, targetDest.name, targetDest.addr);
     }
 }
 
@@ -756,14 +784,13 @@ function toggleVehicleMode() {
     }
     updateSpeedUI();
     showToast(`已切換為 ${vehicleMode === 'scooter' ? '🛵 機車模式 (自動避開收費與國道)' : '🚗 汽車模式'}`);
-    if (targetDest) executeMultiRoutePlanning(targetDest.lat, targetDest.lon, targetDest.name);
+    if (targetDest) executeMultiRoutePlanning(targetDest.lat, targetDest.lon, targetDest.name, targetDest.addr);
 }
 
-// 呼叫原生支援「避開收費站 (use_tolls: 0)」與「避開國道 (use_highways: 0)」的 Valhalla 路由引擎 + OSRM 多重備援
 async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, endLat) {
     const parsedRoutes = [];
 
-    // 通道 A：Valhalla 開源專業路由引擎 (原生支援精確控制 use_tolls 與 alternates 替代路線)
+    // 通道 A：Valhalla 開源專業路由引擎 (原生支援 use_tolls: 0 避開收費站)
     try {
         const valhallaReq = {
             locations: [
@@ -794,7 +821,8 @@ async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, end
                     lat: rawCoords[Math.min(m.begin_shape_index || 0, rawCoords.length - 1)].lat,
                     lon: rawCoords[Math.min(m.begin_shape_index || 0, rawCoords.length - 1)].lon,
                     modifier: mapValhallaTypeToModifier(m.type),
-                    name: (m.street_names && m.street_names[0]) || m.instruction || '前方道路'
+                    instruction: m.instruction || '',
+                    name: (m.street_names && m.street_names[0]) || cleanValhallaInstruction(m.instruction) || '前方道路'
                 }));
                 parsedRoutes.push({
                     label: idx === 0 ? (avoidTolls ? '💲 免收費推薦' : '⚡ 最快路線') : `🔀 替代路線 ${idx + 1}`,
@@ -809,7 +837,7 @@ async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, end
         }
     } catch (ve) {}
 
-    // 通道 B：OSRM 多替代路線引擎 (alternatives=true) 並自動標記是否行經國道/收費段
+    // 通道 B：OSRM 多替代路線引擎
     const queryPath = `route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
     const osrmDirect = `https://router.project-osrm.org/${queryPath}`;
     const deServer = `https://routing.openstreetmap.de/routed-car/${queryPath}`;
@@ -819,12 +847,11 @@ async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, end
         data.routes.forEach((r, idx) => {
             const rawCoords = r.geometry.coordinates.map(c => ({ lon: c[0], lat: c[1] }));
             const rawSteps = r.legs[0].steps || [];
-            // 檢查步驟中是否包含國道一號/國道三號等收費高速公路
             const hasHighwayOrToll = rawSteps.some(s => /國道|高速公路|高架/.test(s.name || ''));
-            const steps = rawSteps.map(s => ({
+            const steps = rawSteps.map((s, sIdx) => ({
                 lat: s.maneuver.location[1],
                 lon: s.maneuver.location[0],
-                modifier: s.maneuver.modifier || s.maneuver.type,
+                modifier: sIdx === 0 ? 'depart' : (s.maneuver.modifier || s.maneuver.type),
                 name: s.name || '前方道路'
             }));
             parsedRoutes.push({
@@ -836,7 +863,6 @@ async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, end
                 steps
             });
         });
-        // 若開啟避開收費，優先把不含國道收費的路線排在第一順位
         if (avoidTolls) {
             parsedRoutes.sort((a, b) => Number(a.hasToll) - Number(b.hasToll));
         }
@@ -844,11 +870,19 @@ async function fetchTollFreeAndAlternativeRoutes(startLon, startLat, endLon, end
     return parsedRoutes;
 }
 
+// 精確對照 Valhalla 轉向代碼：區分「出發 (depart)」、「右轉 (right)」、「左轉 (left)」
 function mapValhallaTypeToModifier(type) {
-    if ([9, 10, 11].includes(type)) return 'right';
-    if ([14, 15, 16].includes(type)) return 'left';
+    if ([1, 2, 3].includes(type)) return 'depart';
+    if ([4, 5, 6].includes(type)) return 'arrive';
+    if ([9, 10, 11, 18, 20, 23].includes(type)) return 'right';
+    if ([14, 15, 16, 19, 21, 24].includes(type)) return 'left';
     if ([12, 13].includes(type)) return 'uturn';
     return 'straight';
+}
+
+function cleanValhallaInstruction(inst) {
+    if (!inst) return '';
+    return inst.replace(/[。.]$/, '');
 }
 
 function decodePolyline6(str) {
@@ -865,7 +899,6 @@ function decodePolyline6(str) {
     return coordinates;
 }
 
-// 渲染多路線選擇器卡片，允許使用者點擊切換路線
 function renderRouteOptionCards() {
     const box = document.getElementById('route-options-selector');
     if (!candidateRoutes || candidateRoutes.length <= 1) {
@@ -903,14 +936,13 @@ function selectCandidateRoute(idx) {
     document.getElementById('toll-status-badge').innerText = chosen.hasToll ? '🛣️ 含快速路段' : '💲免收費路線';
     renderRouteOptionCards();
     renderRouteLayersOnMap();
-    updateNavigationProgress(false);
+    updateNavigationProgress();
     showToast(`✅ 已切換為「${chosen.label}」(${(chosen.distance/1000).toFixed(1)} km)`);
 }
 
 function renderRouteLayersOnMap() {
     if (!map || !map.getSource('main-route-source')) return;
 
-    // 1. 渲染未選中的備選路線 (淺藍灰色)
     const altFeatures = [];
     candidateRoutes.forEach((rt, idx) => {
         if (idx !== selectedRouteIndex && rt.rawCoords.length > 1) {
@@ -928,7 +960,6 @@ function renderRouteLayersOnMap() {
         map.getSource('alt-route-source').setData({ 'type': 'FeatureCollection', 'features': altFeatures });
     }
 
-    // 2. 渲染主選路線 (圖 2 的 Apple 寶石藍光帶，急彎處漸變紅橘色)
     const mainFeatures = [];
     for (let i = 0; i < activeRouteCoords.length - 1; i++) {
         const pt1 = activeRouteCoords[i];
@@ -951,47 +982,24 @@ function renderRouteLayersOnMap() {
     map.getSource('main-route-source').setData({ 'type': 'FeatureCollection', 'features': mainFeatures });
 }
 
-// 開機直接載入 1:1 對應圖 2 的示範路線与懸浮路牌
-function loadInitialAppleDemoRoute() {
-    const demoCoords = [
-        { lat: 25.06342, lon: 121.45242 },
-        { lat: 25.06310, lon: 121.45180 },
-        { lat: 25.06260, lon: 121.45120 },
-        { lat: 25.06180, lon: 121.45030 }
-    ];
-    activeRouteCoords = resampleAndAnalyzeRoute(demoCoords, 3.0);
-    candidateRoutes = [{
-        label: '💲 免收費推薦',
-        hasToll: false,
-        distance: 16200,
-        duration: 1920,
-        rawCoords: demoCoords,
-        steps: [
-            { lat: 25.06335, lon: 121.45235, modifier: 'depart', name: '五工二路62巷' },
-            { lat: 25.06310, lon: 121.45180, modifier: 'right', name: '五工三路' }
-        ]
-    }];
-    routeSteps = candidateRoutes[0].steps;
-    renderRouteLayersOnMap();
-    updateWebGLRoadBubbles('五工三路62巷', 121.45198, 25.06325, '五工三路50巷', 121.45258, 25.06288);
-
-    // 同步遠端真實路線備用
-    executeMultiRoutePlanning(25.0405, 121.5601, '臺北大巨蛋', true);
-}
-
-// ==================== 4. 導航狀態推進与面板切換 ====================
+// ==================== 4. 導航狀態推進與完整地址驗證欄更新 ====================
 function showSearchOverlay() {
     if (isSimulatingDrive) stopSimulationDrive();
     document.getElementById('apple-top-banner').style.display = 'none';
     document.getElementById('search-card').style.display = 'flex';
+    if (activeRouteCoords.length > 1) {
+        document.getElementById('close-search-btn').style.display = 'flex';
+    }
     renderRouteOptionCards();
 }
 
 function hideSearchOverlay() {
     lockInputAgainstVibration();
     document.getElementById('suggestions-box').style.display = 'none';
-    document.getElementById('search-card').style.display = 'none';
-    document.getElementById('apple-top-banner').style.display = 'flex';
+    if (activeRouteCoords.length > 1) {
+        document.getElementById('search-card').style.display = 'none';
+        document.getElementById('apple-top-banner').style.display = 'flex';
+    }
 }
 
 async function planRoute() {
@@ -1003,23 +1011,36 @@ async function planRoute() {
 
     const latLonMatch = val.match(/^(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)$/);
     if (latLonMatch) {
-        executeMultiRoutePlanning(parseFloat(latLonMatch[1]), parseFloat(latLonMatch[3]), '自選座標點');
+        const cLat = parseFloat(latLonMatch[1]), cLon = parseFloat(latLonMatch[3]);
+        const rev = await reverseGeocodeAddress(cLat, cLon);
+        executeMultiRoutePlanning(cLat, cLon, rev.title, rev.fullAddress);
         return;
     }
 
     showToast(`🔍 正在搜尋「${val}」...`);
     const results = await searchGeocodingMultiChannel(val);
     if (results && results.length > 0) {
-        executeMultiRoutePlanning(results[0].lat, results[0].lon, results[0].name);
+        executeMultiRoutePlanning(results[0].lat, results[0].lon, results[0].name, results[0].display_name);
     } else {
         showToast('⚠️ 找不到該地點，請嘗試縮短路名');
     }
 }
 
-async function executeMultiRoutePlanning(destLat, destLon, labelName, isSilentInit = false) {
+async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddressText = '') {
     if (!destLat || !destLon) return;
     if (isSimulatingDrive) stopSimulationDrive();
-    targetDest = { lat: destLat, lon: destLon, name: labelName };
+
+    // 若無附帶詳細地址，自動反向查詢補齊完整門牌地址以供驗證
+    if (!fullAddressText) {
+        const rev = await reverseGeocodeAddress(destLat, destLon);
+        fullAddressText = rev.fullAddress;
+    }
+
+    targetDest = { lat: destLat, lon: destLon, name: labelName, addr: fullAddressText };
+
+    // 更新底部白色卡片上的「目的地名稱 + 完整地址驗證列」
+    document.getElementById('dest-verify-title').innerText = `📍 目的地：${labelName}`;
+    document.getElementById('dest-verify-address').innerText = `🏠 地址：${fullAddressText}`;
 
     if (destMarker) destMarker.remove();
     const destEl = document.createElement('div');
@@ -1039,22 +1060,24 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, isSilentIn
 
             renderRouteLayersOnMap();
             renderRouteOptionCards();
+            hideSearchOverlay();
+            updateNavigationProgress();
 
-            if (!isSilentInit) {
-                hideSearchOverlay();
-                updateNavigationProgress(false);
-                recenterCamera();
-                showToast(`✅ 已規劃${avoidTolls ? '免收費' : '最佳'}路線！全長 ${(totalRouteMeters/1000).toFixed(1)} km`);
-                speakVoice(`開始導航前往${labelName}，已為您${avoidTolls ? '避開收費路段' : '規劃最快路線'}`, 'start_nav');
-            }
+            // 縮放預覽整條路線，2.5 秒後自動鎖回自車 3D 追尾視角
+            const bounds = new maplibregl.LngLatBounds();
+            primary.rawCoords.forEach(c => bounds.extend([c.lon, c.lat]));
+            map.fitBounds(bounds, { padding: { top: 140, bottom: 200, left: 50, right: 50 }, pitch: 45, duration: 900 });
+
+            showToast(`✅ 已規劃${avoidTolls ? '免收費' : '最佳'}路線！全長 ${(totalRouteMeters/1000).toFixed(1)} km`);
+            speakVoice(`開始導航前往${labelName}，已為您${avoidTolls ? '避開收費路段' : '規劃最快路線'}`, 'start_nav');
             return;
         }
     } catch (e) {
-        if (!isSilentInit) showToast('⚠️ 維持當前離線導引路線');
+        showToast('⚠️ 路線伺服器忙碌，請稍後重試');
     }
 }
 
-function updateNavigationProgress(isInitialDemo = false) {
+function updateNavigationProgress() {
     if (activeRouteCoords.length < 2) return;
 
     let nearestIdx = 0, minDist = Infinity;
@@ -1067,15 +1090,15 @@ function updateNavigationProgress(isInitialDemo = false) {
         if (isSimulatingDrive) stopSimulationDrive();
         speakVoice(`已抵達目的地，${targetDest.name}`, 'arrive');
         document.getElementById('banner-main-text').innerText = `已抵達 ${targetDest.name}`;
-        document.getElementById('banner-dist-sub').style.display = 'none';
+        document.getElementById('banner-dist-sub').innerText = targetDest.addr || '導航完成';
         return;
     }
 
     while (passedStepIndex < routeSteps.length - 1) {
         const step = routeSteps[passedStepIndex];
-        if (passedStepIndex === 0 && nearestIdx > 4) {
+        if (passedStepIndex === 0 && step.modifier === 'depart' && nearestIdx > 3) {
             passedStepIndex++;
-        } else if (getDistanceMeters(userLat, userLon, step.lat, step.lon) < 18) {
+        } else if (passedStepIndex > 0 && getDistanceMeters(userLat, userLon, step.lat, step.lon) < 18) {
             passedStepIndex++;
         } else {
             break;
@@ -1085,34 +1108,40 @@ function updateNavigationProgress(isInitialDemo = false) {
     const currentStep = routeSteps[passedStepIndex];
     const nextStep = routeSteps[passedStepIndex + 1];
 
-    if (isInitialDemo) {
-        document.getElementById('banner-main-icon').innerHTML = APPLE_SVGS.departRing;
-        document.getElementById('banner-main-text').innerText = '從五工二路62巷出發';
-        document.getElementById('banner-dist-sub').style.display = 'none';
-        document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.right;
-        document.getElementById('banner-sub-text').innerText = '五工三路';
-    } else if (currentStep) {
-        const distToStep = Math.round(getDistanceMeters(userLat, userLon, currentStep.lat, currentStep.lon));
-        document.getElementById('banner-main-icon').innerHTML = getTurnSvg(currentStep.modifier);
-        document.getElementById('banner-main-text').innerText = `${getTurnText(currentStep.modifier)}進入${currentStep.name}`;
-        const distEl = document.getElementById('banner-dist-sub');
-        distEl.style.display = 'block';
-        distEl.innerText = distToStep < 1000 ? `${distToStep} 公尺後` : `${(distToStep/1000).toFixed(1)} 公里後`;
+    if (currentStep) {
+        if (currentStep.modifier === 'depart' && nextStep) {
+            // 當剛從起點出發時，主看板直接預告「下一個實際轉彎動作」，不再顯示莫名其妙的假路名！
+            const distToTurn = Math.round(getDistanceMeters(userLat, userLon, nextStep.lat, nextStep.lon));
+            document.getElementById('banner-main-icon').innerHTML = getTurnSvg(nextStep.modifier);
+            document.getElementById('banner-main-text').innerText = `${getTurnText(nextStep.modifier)}進入${nextStep.name}`;
+            document.getElementById('banner-dist-sub').innerText = distToTurn < 1000 ? `${distToTurn} 公尺後 (由 ${currentStep.name} 出發)` : `${(distToTurn/1000).toFixed(1)} 公里後`;
 
-        if (nextStep) {
-            document.getElementById('banner-sub-icon').innerHTML = getTurnSvg(nextStep.modifier);
-            document.getElementById('banner-sub-text').innerText = nextStep.name;
-            updateWebGLRoadBubbles(currentStep.name, currentStep.lon, currentStep.lat, nextStep.name, nextStep.lon, nextStep.lat);
+            const afterNext = routeSteps[passedStepIndex + 2];
+            document.getElementById('banner-sub-icon').innerHTML = afterNext ? getTurnSvg(afterNext.modifier) : APPLE_SVGS.straight;
+            document.getElementById('banner-sub-text').innerText = afterNext ? afterNext.name : (targetDest ? targetDest.name : '目的地');
+
+            updateWebGLRoadBubbles(nextStep.name, nextStep.lon, nextStep.lat, currentStep.name, currentStep.lon, currentStep.lat);
         } else {
-            document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.straight;
-            document.getElementById('banner-sub-text').innerText = targetDest ? targetDest.name : '目的地';
-            updateWebGLRoadBubbles(currentStep.name, currentStep.lon, currentStep.lat, null, 0, 0);
-        }
+            const distToStep = Math.round(getDistanceMeters(userLat, userLon, currentStep.lat, currentStep.lon));
+            document.getElementById('banner-main-icon').innerHTML = getTurnSvg(currentStep.modifier);
+            document.getElementById('banner-main-text').innerText = `${getTurnText(currentStep.modifier)}進入${currentStep.name}`;
+            document.getElementById('banner-dist-sub').innerText = distToStep < 1000 ? `${distToStep} 公尺後` : `${(distToStep/1000).toFixed(1)} 公里後`;
 
-        if (distToStep <= 150 && distToStep >= 115) {
-            speakVoice(`前方 150 公尺，${getTurnText(currentStep.modifier)}進入${currentStep.name}`, `v_${passedStepIndex}_150`);
-        } else if (distToStep <= 40 && distToStep >= 18) {
-            speakVoice(`請${getTurnText(currentStep.modifier)}進入${currentStep.name}`, `v_${passedStepIndex}_35`);
+            if (nextStep) {
+                document.getElementById('banner-sub-icon').innerHTML = getTurnSvg(nextStep.modifier);
+                document.getElementById('banner-sub-text').innerText = nextStep.name;
+                updateWebGLRoadBubbles(currentStep.name, currentStep.lon, currentStep.lat, nextStep.name, nextStep.lon, nextStep.lat);
+            } else {
+                document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.straight;
+                document.getElementById('banner-sub-text').innerText = targetDest ? targetDest.name : '目的地';
+                updateWebGLRoadBubbles(currentStep.name, currentStep.lon, currentStep.lat, null, 0, 0);
+            }
+
+            if (distToStep <= 150 && distToStep >= 115) {
+                speakVoice(`前方 150 公尺，${getTurnText(currentStep.modifier)}進入${currentStep.name}`, `v_${passedStepIndex}_150`);
+            } else if (distToStep <= 40 && distToStep >= 18) {
+                speakVoice(`請${getTurnText(currentStep.modifier)}進入${currentStep.name}`, `v_${passedStepIndex}_35`);
+            }
         }
     }
 
@@ -1145,6 +1174,7 @@ function updateNavigationProgress(isInitialDemo = false) {
 
 function getTurnSvg(mod) {
     if (!mod) return APPLE_SVGS.straight;
+    if (mod === 'depart') return APPLE_SVGS.departRing;
     if (mod.includes('right')) return APPLE_SVGS.right;
     if (mod.includes('left')) return APPLE_SVGS.left;
     if (mod.includes('uturn')) return APPLE_SVGS.uturn;
@@ -1152,18 +1182,32 @@ function getTurnSvg(mod) {
 }
 
 function getTurnText(mod) {
-    if (!mod) return '順行';
+    if (!mod || mod === 'depart') return '出發直行';
     if (mod.includes('right')) return '右轉';
     if (mod.includes('left')) return '左轉';
     if (mod.includes('uturn')) return '迴轉';
-    return '直行';
+    return '順行';
 }
 
-// ==================== 5. 感測器、AR 實景窗與 60FPS 模擬巡航 ====================
+// ==================== 5. 真實 GPS 起點鎖定、感測器與 60FPS 模擬巡航 ====================
 async function initSensors() {
     try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) {}
     window.addEventListener('deviceorientation', handleOrientation, true);
     if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+            hasAcquiredRealGPS = true;
+            if (userMarker) userMarker.setLngLat([userLon, userLat]);
+            if (map) map.jumpTo({ center: [userLon, userLat], zoom: 17.2 });
+
+            const rev = await reverseGeocodeAddress(userLat, userLon);
+            document.getElementById('dest-verify-address').innerText = `📍 目前位置：${rev.fullAddress}`;
+            showToast(`📍 已定位於：${rev.title}`);
+        }, () => {
+            document.getElementById('dest-verify-address').innerText = `📍 請輸入目的地或點擊地圖開始導航`;
+        }, { enableHighAccuracy: true, timeout: 8000 });
+
         navigator.geolocation.watchPosition(handleGPS, () => {}, { enableHighAccuracy: true, maximumAge: 1000 });
     }
 }
@@ -1218,7 +1262,7 @@ function toggleMapTheme() {
     map.once('style.load', () => {
         applyAppleMapsShaderStyle();
     });
-    showToast(isDarkMode ? '🌙 已切換為深色模式' : '☀️ 已切換為圖 2 原生淺色立體模式');
+    showToast(isDarkMode ? '🌙 已切換為深色模式' : '☀️ 已切換為原生淺色立體模式');
 }
 
 function getScreenOrientationAngle() {
@@ -1279,7 +1323,9 @@ function handleGPS(pos) {
     if (isMapFollowingUser && map) {
         map.jumpTo({ center: [userLon, userLat] });
     }
-    updateNavigationProgress(false);
+    if (activeRouteCoords.length > 1) {
+        updateNavigationProgress();
+    }
 }
 
 function updateSpeedUI() {
@@ -1313,7 +1359,7 @@ function recenterCamera() {
             duration: 450
         });
     }
-    showToast('🎯 已對齊車頭朝上並鎖定自車');
+    showToast('🎯 已鎖定自車位置並對齊車頭朝上');
 }
 
 function toggleSimulationDrive() {
@@ -1324,7 +1370,7 @@ function toggleSimulationDrive() {
 
 function startSimulationDrive() {
     if (activeRouteCoords.length < 2) {
-        showToast('⚠️ 請先規劃路線');
+        showToast('⚠️ 請先輸入目的地並規劃路線');
         return;
     }
     hideSearchOverlay();
@@ -1377,7 +1423,7 @@ function startSimulationDrive() {
             });
         }
 
-        updateNavigationProgress(false);
+        updateNavigationProgress();
 
         const speedMps = currentSpeedKmh / 3.6;
         simFloatIndex += (speedMps * dt) / 4.0;
@@ -1408,17 +1454,16 @@ function stopSimulationDrive() {
         if (map) {
             map.jumpTo({
                 center: [userLon, userLat],
-                bearing: 42,
+                bearing: smoothedYaw,
                 pitch: 56
             });
         }
-        updateWebGLRoadBubbles('五工三路62巷', 121.45198, 25.06325, '五工三路50巷', 121.45258, 25.06288);
-        updateNavigationProgress(true);
-        showToast('📍 已停止模擬，瞬間返回原點');
+        updateNavigationProgress();
+        showToast('📍 已停止模擬，瞬間返回出發原點');
     }
 }
 
-// ==================== 6. 搜尋建議與通用幾何工具 ====================
+// ==================== 6. 搜尋建議與完整門牌地址組裝工具 ====================
 function showToast(msg) {
     const toast = document.getElementById('hud-toast');
     toast.innerText = msg;
@@ -1483,6 +1528,22 @@ function cleanQueryString(raw) {
               .trim();
 }
 
+// 將 Nominatim 的 address 物件組合成台灣標準完整地址格式 (郵遞區號 + 縣市 + 區 + 里 + 路 + 號)
+function formatTaiwanFullAddress(item) {
+    if (item.address) {
+        const a = item.address;
+        const zip = a.postcode || '';
+        const city = a.city || a.county || a.state || '';
+        const dist = a.suburb || a.town || a.city_district || a.district || '';
+        const village = a.village || a.neighbourhood || '';
+        const road = a.road || a.pedestrian || '';
+        const num = a.house_number ? (a.house_number.endsWith('號') ? a.house_number : `${a.house_number}號`) : '';
+        const combined = `${zip} ${city}${dist}${village}${road}${num}`.trim();
+        if (combined.length >= 5) return combined;
+    }
+    return item.display_name || '台灣';
+}
+
 async function searchGeocodingMultiChannel(rawKeyword) {
     const keyword = cleanQueryString(rawKeyword);
     const cleanKey = keyword.toLowerCase();
@@ -1495,12 +1556,11 @@ async function searchGeocodingMultiChannel(rawKeyword) {
                         (aliasWord && (poi.name.includes(aliasWord) || poi.aliases.some(a => a.includes(aliasWord))));
         if (isMatch) results.push({ name: poi.name, display_name: poi.addr, lat: poi.lat, lon: poi.lon });
     });
-    if (results.length > 0) return results;
 
     let queryTarget = aliasWord || keyword;
     try {
         const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(keyword)}&limit=1&namespace=0&format=json&origin=*`;
-        const wData = await fetchJsonWithTimeout(wikiUrl, 2500);
+        const wData = await fetchJsonWithTimeout(wikiUrl, 2200);
         if (wData && wData[1] && wData[1].length > 0) queryTarget = wData[1][0];
     } catch (e) {}
 
@@ -1509,31 +1569,47 @@ async function searchGeocodingMultiChannel(rawKeyword) {
     if (streetOnly && streetOnly !== queryTarget && streetOnly.length >= 3) candidates.push(streetOnly);
 
     for (const q of candidates) {
-        try {
-            const pUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${userLat}&lon=${userLon}&limit=5`;
-            const pData = await fetchJsonWithTimeout(pUrl, 4500);
-            if (pData && Array.isArray(pData.features) && pData.features.length > 0) {
-                pData.features.forEach(f => {
-                    const coords = f.geometry.coordinates;
-                    const props = f.properties || {};
-                    const label = [props.city, props.district, props.street, props.housenumber].filter(Boolean).join(' ') || '台灣';
-                    results.push({ name: props.name || props.street || q, display_name: label, lat: coords[1], lon: coords[0] });
-                });
-                break;
-            }
-        } catch (e) {}
-
+        // 優先查詢帶完整 addressdetails=1 的 Nominatim，以獲取最精準的台灣縣市區里門牌地址
         try {
             const viewbox = `${userLon - 0.8},${userLat + 0.8},${userLon + 0.8},${userLat - 0.8}`;
-            const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=tw&limit=5&viewbox=${viewbox}&accept-language=zh-TW`;
-            const data = await waterfallFetchJson([nomUrl, `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(nomUrl)}`], 5000);
+            const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=tw&addressdetails=1&limit=5&viewbox=${viewbox}&accept-language=zh-TW`;
+            const data = await waterfallFetchJson([nomUrl, `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(nomUrl)}`], 4500);
             if (Array.isArray(data) && data.length > 0) {
                 data.forEach(item => {
-                    results.push({ name: item.name || item.display_name.split(',')[0].trim(), display_name: item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
+                    const formattedAddr = formatTaiwanFullAddress(item);
+                    const mainName = item.name || item.display_name.split(',')[0].trim();
+                    if (!results.some(r => Math.abs(r.lat - parseFloat(item.lat)) < 0.0005)) {
+                        results.push({
+                            name: mainName,
+                            display_name: formattedAddr,
+                            lat: parseFloat(item.lat),
+                            lon: parseFloat(item.lon)
+                        });
+                    }
                 });
                 break;
             }
         } catch (e2) {}
+
+        try {
+            const pUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${userLat}&lon=${userLon}&limit=5`;
+            const pData = await fetchJsonWithTimeout(pUrl, 4000);
+            if (pData && Array.isArray(pData.features) && pData.features.length > 0) {
+                pData.features.forEach(f => {
+                    const coords = f.geometry.coordinates;
+                    const props = f.properties || {};
+                    const num = props.housenumber ? `${props.housenumber}號` : '';
+                    const fullLabel = [props.postcode, props.city || props.state, props.district || props.suburb, props.street, num].filter(Boolean).join(' ') || '台灣';
+                    results.push({
+                        name: props.name || (props.street ? `${props.street}${num}` : q),
+                        display_name: fullLabel,
+                        lat: coords[1],
+                        lon: coords[0]
+                    });
+                });
+                break;
+            }
+        } catch (e) {}
     }
     return results;
 }
@@ -1547,13 +1623,15 @@ function onSearchInput(query) {
 }
 
 function onPasteAddress(e) {
-    setTimeout(() => {
+    setTimeout(async () => {
         const val = document.getElementById('dest-input').value.trim();
         const atMatch = val.match(/@(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/) || val.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
         if (atMatch) {
             lockInputAgainstVibration();
             document.getElementById('suggestions-box').style.display = 'none';
-            executeMultiRoutePlanning(parseFloat(atMatch[1]), parseFloat(atMatch[2]), 'Google 座標點');
+            const cLat = parseFloat(atMatch[1]), cLon = parseFloat(atMatch[2]);
+            const rev = await reverseGeocodeAddress(cLat, cLon);
+            executeMultiRoutePlanning(cLat, cLon, rev.title, rev.fullAddress);
         } else {
             fetchPlaceSuggestions(val);
         }
@@ -1570,12 +1648,18 @@ async function fetchPlaceSuggestions(keyword) {
         const distKm = (getDistanceMeters(userLat, userLon, item.lat, item.lon) / 1000).toFixed(1);
         const row = document.createElement('div');
         row.className = 'suggestion-item';
-        row.innerHTML = `<div><div class="sug-title">📍 ${item.name}</div><div class="sug-sub">${item.display_name}</div></div><div class="sug-dist">${distKm} km</div>`;
+        row.innerHTML = `
+            <div class="sug-info-col">
+                <div class="sug-title">📍 ${item.name}</div>
+                <div class="sug-addr-full">🏠 ${item.display_name}</div>
+            </div>
+            <div class="sug-dist">${distKm} km</div>
+        `;
         row.onclick = () => {
             document.getElementById('dest-input').value = item.name;
             lockInputAgainstVibration();
             sugBox.style.display = 'none';
-            executeMultiRoutePlanning(item.lat, item.lon, item.name);
+            executeMultiRoutePlanning(item.lat, item.lon, item.name, item.display_name);
         };
         sugBox.appendChild(row);
     });
