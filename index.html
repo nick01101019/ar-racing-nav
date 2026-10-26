@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Apple 導航">
-    <title>Apple Maps 3D 旗艦導航 (超銳利零模糊 + 開始/結束兩階段導航版)</title>
+    <title>Apple Maps 3D 旗艦導航 (120FPS 極致順暢 + 自由縮放平移修復版)</title>
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -20,8 +20,11 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 1. 全螢幕 GPU WebGL 3D 向量地圖 (強制最高像素銳利度) */
-        #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+        /* 1. 全螢幕 GPU WebGL 3D 向量地圖 (確保觸控手勢 100% 暢通) */
+        #map {
+            position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+            touch-action: none;
+        }
         .maplibregl-control-container { display: none !important; }
 
         /* 非阻斷式提示膠囊 */
@@ -45,10 +48,10 @@
         }
         #ar-pip-video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* ==================== 主 UI 無碰撞懸浮層 (避開 iOS 頂部狀態列模糊帶) ==================== */
+        /* ==================== 主 UI 無碰撞懸浮層 (中央完全鏤空，絕不阻擋地圖觸控與縮放！) ==================== */
         #ui-layer {
-            position: fixed; inset: 0; width: 100vw; height: 100%; z-index: 10; pointer-events: none;
-            /* 關鍵修復：加大頂部安全距離，徹底避開 iPhone 狀態列下方的系統毛玻璃模糊遮罩！ */
+            position: fixed; inset: 0; width: 100vw; height: 100%; z-index: 10;
+            pointer-events: none !important;
             padding-top: calc(max(22px, env(safe-area-inset-top)) + 14px);
             padding-bottom: max(14px, env(safe-area-inset-bottom));
             padding-left: max(12px, env(safe-area-inset-left));
@@ -60,9 +63,10 @@
         .top-left-column {
             width: 100%; max-width: 450px; margin: 0 auto;
             display: flex; flex-direction: column; gap: 8px; min-height: 0;
+            pointer-events: none;
         }
 
-        /* ==================== A. 搜尋與「路線預覽選擇」面板 (實心銳利白底，零邊緣模糊) ==================== */
+        /* ==================== A. 搜尋與「路線預覽選擇」面板 ==================== */
         #search-card {
             pointer-events: auto; position: relative; width: 100%;
             background: #ffffff;
@@ -87,7 +91,6 @@
             padding: 11px 16px; font-size: 14px; font-weight: 800; cursor: pointer; flex-shrink: 0;
         }
 
-        /* 路線偏好過濾晶片列 (彈性換行不截斷) */
         .route-filter-chips {
             display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
         }
@@ -163,11 +166,10 @@
             padding: 4px 8px; border-radius: 8px; flex-shrink: 0;
         }
 
-        /* ==================== B. 正式導航頂部看板 (實心銳利邊界，徹底消除頂部模糊感！) ==================== */
+        /* ==================== B. 正式導航頂部看板 ==================== */
         #apple-top-banner {
             pointer-events: auto; display: none; flex-direction: column; width: 100%;
             border-radius: 22px; overflow: hidden;
-            /* 移除會引發 iOS 頂部暈染的模糊，改為高銳利實心深色卡片與清晰陰影 */
             box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
             border: 1px solid rgba(255, 255, 255, 0.15);
         }
@@ -175,9 +177,7 @@
             background: #2c2c2e; padding: 14px 18px;
             display: flex; align-items: center; gap: 14px; color: #ffffff; cursor: pointer;
         }
-        .banner-upper.imminent-turn {
-            background: #059669;
-        }
+        .banner-upper.imminent-turn { background: #059669; }
         .banner-icon-wrap {
             width: 50px; height: 50px; min-width: 50px; border-radius: 14px;
             background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center;
@@ -274,20 +274,43 @@
         .bottom-right-column {
             width: 100%; max-width: 450px; margin: 0 auto;
             display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+            pointer-events: none;
         }
 
         .loc-fab-row {
             width: 100%; display: flex; justify-content: space-between; align-items: center; pointer-events: none;
         }
+        /* 定位按鈕：當自由拖曳地圖時，顯示醒目藍邊提示「點擊返回自車」 */
         .apple-loc-fab {
             pointer-events: auto; width: 46px; height: 46px; border-radius: 50%;
             background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s;
+            border: 2px solid rgba(0, 122, 255, 0.2); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s;
         }
-        body.dark-mode .apple-loc-fab { background: #2c2c2e; border-color: rgba(255,255,255,0.12); }
+        .apple-loc-fab.free-pan-mode {
+            border-color: #007aff; background: #e5f1ff;
+            box-shadow: 0 0 16px rgba(0, 122, 255, 0.45);
+        }
+        body.dark-mode .apple-loc-fab { background: #2c2c2e; border-color: rgba(255,255,255,0.15); }
         .apple-loc-fab:active { transform: scale(0.92); }
         .apple-loc-fab svg { width: 21px; height: 21px; fill: #007aff; transform: rotate(35deg); }
+
+        /* 右側快速縮放按鈕組 (+ / -)，方便單手在車架上直接點擊放大縮小！ */
+        .zoom-pill-group {
+            pointer-events: auto; display: flex; flex-direction: column;
+            background: #ffffff; border-radius: 14px; overflow: hidden;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); border: 1px solid rgba(0,0,0,0.08);
+        }
+        body.dark-mode .zoom-pill-group { background: #2c2c2e; border-color: rgba(255,255,255,0.12); }
+        .zoom-btn {
+            width: 42px; height: 40px; border: none; background: transparent;
+            color: #1c1c1e; font-size: 22px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        body.dark-mode .zoom-btn { color: #ffffff; }
+        .zoom-btn:active { background: rgba(0, 122, 255, 0.15); }
+        .zoom-divider { width: 100%; height: 1px; background: rgba(0,0,0,0.08); }
+        body.dark-mode .zoom-divider { background: rgba(255,255,255,0.1); }
 
         #apple-bottom-sheet {
             pointer-events: auto; width: 100%;
@@ -300,7 +323,6 @@
         .sheet-grabber { width: 34px; height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.15); margin: 0 auto; }
         body.dark-mode .sheet-grabber { background: rgba(255, 255, 255, 0.25); }
 
-        /* 目的地名稱與完整地址驗證欄 */
         .dest-verify-bar {
             display: flex; flex-direction: column; gap: 2px;
             background: rgba(0, 122, 255, 0.08); border-left: 3.5px solid #007aff;
@@ -324,7 +346,6 @@
         body.dark-mode .eta-big-num { color: #ffffff; }
         .eta-small-lbl { font-size: 11px; font-weight: 700; color: #8e8e93; margin-top: 2px; }
 
-        /* 底部四鍵控制列 (包含超醒目的「🚀 開始導航」與紅色的「✖ 結束導航」按鈕) */
         .sheet-actions-row {
             display: grid; grid-template-columns: 1.3fr 1fr 0.9fr 1.1fr; gap: 6px; width: 100%;
             padding-top: 6px; border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -383,7 +404,7 @@
 
 <!-- 主 UI 層 -->
 <div id="ui-layer">
-    <!-- 左上主欄：搜尋/路線預覽卡 或 正式導航看板 + 時速與超速警示列 -->
+    <!-- 左上主欄 -->
     <div class="top-left-column">
         <!-- A. 搜尋與「路線預覽選擇」面板 -->
         <div id="search-card">
@@ -395,17 +416,17 @@
                 <button class="search-submit-btn" onclick="planRoute()">搜尋</button>
             </div>
 
-            <!-- 路線規劃條件開關 -->
             <div class="route-filter-chips">
                 <button class="filter-chip active" id="chip-avoid-tolls" onclick="toggleRouteOption('tolls')">💲 避開收費站: 開</button>
                 <button class="filter-chip active" id="chip-avoid-highways" onclick="toggleRouteOption('highways')">🛣️ 避開國道: 開</button>
                 <button class="filter-chip" id="chip-vehicle" onclick="toggleVehicleMode()">🛵 機車模式</button>
+                <button class="filter-chip" id="theme-btn" onclick="toggleMapTheme()">🌙 深色</button>
             </div>
 
-            <!-- 多路線方案切換器 (規劃完成後顯示) -->
+            <!-- 多路線方案切換器 -->
             <div id="route-options-selector"></div>
 
-            <!-- 新增：路線預覽階段專屬的「🚀 開始導航」與「✖ 取消路線」大按鈕！ -->
+            <!-- 路線預覽階段專屬的「🚀 開始導航」與「✖ 取消路線」大按鈕 -->
             <div id="preview-action-bar">
                 <button class="btn-start-go" onclick="startTurnByTurnNavigation()">🚀 開始導航</button>
                 <button class="btn-cancel-route" onclick="cancelAndClearRoute()">✖ 取消路線</button>
@@ -415,7 +436,7 @@
             <div id="suggestions-box"></div>
         </div>
 
-        <!-- B. 正式 3D 導航看板 (按下「🚀 開始導航」後才會切換顯示，銳利不模糊) -->
+        <!-- B. 正式 3D 導航看板 -->
         <div id="apple-top-banner">
             <div class="banner-upper" id="banner-upper-box" onclick="showSearchOverlay()">
                 <div class="banner-icon-wrap" id="banner-main-icon"></div>
@@ -459,20 +480,26 @@
         </div>
     </div>
 
-    <!-- 右下／底部欄：定位鈕 + 目的地完整地址驗證與「開始/結束導航」控制卡 -->
+    <!-- 右下／底部欄：定位鈕 + 單手縮放鈕 + 目的地完整地址驗證與「開始/結束導航」控制卡 -->
     <div class="bottom-right-column">
         <div class="loc-fab-row">
-            <button class="apple-loc-fab" onclick="recenterCamera()" title="鎖定目前真實 GPS 位置">
+            <button class="apple-loc-fab" id="loc-fab-btn" onclick="recenterCamera()" title="鎖定目前真實 GPS 位置">
                 <svg viewBox="0 0 24 24">
                     <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
                 </svg>
             </button>
+
+            <!-- 新增：單手快速放大縮小按鈕 (+ / -)，雙指縮放之外也能一鍵放大縮小！ -->
+            <div class="zoom-pill-group">
+                <button class="zoom-btn" onclick="zoomMapByStep(1.2)" title="放大地圖">＋</button>
+                <div class="zoom-divider"></div>
+                <button class="zoom-btn" onclick="zoomMapByStep(-1.2)" title="縮小地圖">－</button>
+            </div>
         </div>
 
         <div id="apple-bottom-sheet">
             <div class="sheet-grabber"></div>
             
-            <!-- 目的地名稱與完整地址驗證欄 -->
             <div class="dest-verify-bar" id="dest-verify-bar">
                 <div class="dest-verify-title" id="dest-verify-title">📍 尚未設定目的地 (請上方搜尋或點選地圖)</div>
                 <div class="dest-verify-address" id="dest-verify-address">🏠 正在讀取真實 GPS 所在位置...</div>
@@ -493,7 +520,6 @@
                 </div>
             </div>
 
-            <!-- 底部四鍵控制列：明確提供「🚀 開始導航」、「▶ 模擬」、「📷 實景」、「✖ 結束」 -->
             <div class="sheet-actions-row">
                 <button class="action-chip chip-start-nav" id="main-nav-toggle-btn" onclick="onPrimaryNavButtonClick()">🚀 開始導航</button>
                 <button class="action-chip chip-sim" id="sim-btn" onclick="toggleSimulationDrive()">▶ 模擬巡航</button>
@@ -516,8 +542,12 @@ let currentOriginFullAddr = '';
 
 let currentSpeedKmh = 0;
 let smoothedYaw = 0, headingOffsetDeg = 0, hasInitializedYaw = false;
-let isMapFollowingUser = false; // 預覽時為 false (正北平面全覽)，按下「開始導航」後變為 true (3D 車頭追尾)
-let isActiveNavigation = false; // 是否已按下「🚀 開始導航」進入正式導航狀態
+let lastOrientationUpdateMs = 0; // 節流閥：限制羅盤更新頻率，防止卡頓與搶奪觸控
+
+// 關鍵修復：區分「跟隨自車模式」與「自由拖曳縮放模式」
+let isMapFollowingUser = false;
+let isUserInteractingWithMap = false;
+let isActiveNavigation = false;
 let isDarkMode = false;
 let isARPipOpen = false;
 let isVoiceEnabled = true;
@@ -534,6 +564,9 @@ let routeSteps = [];
 let passedStepIndex = 0;
 let totalRouteMeters = 0;
 let targetDest = null;
+
+// 氣泡貼圖髒標記快取 (防止重複繪製 Canvas 造成掉幀)
+let lastBubbleCacheKey = '';
 
 let isSimulatingDrive = false;
 let simAnimFrameId = null;
@@ -579,7 +612,7 @@ const TAIWAN_POI_CACHE = [
     { name: "桃園火車站", aliases: ["桃園車站", "台鐵桃園站"], lat: 24.989210, lon: 121.313540, addr: "330 桃園市桃園區武陵里中正路1號" }
 ];
 
-// ==================== 1. GPU 原生高解析度路名氣泡合成器 ====================
+// ==================== 1. GPU 原生高解析度路名氣泡合成器 (含快取防卡頓) ====================
 function registerRoadBubbleImage(id, text, bgColor, textColor) {
     if (!map) return;
     const dpr = 2;
@@ -594,17 +627,12 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     const boxW = Math.ceil(textMetrics.width + padX * 2);
     const boxH = 32 * dpr;
     const tipH = 7 * dpr;
-    const margin = 6 * dpr;
+    const margin = 4 * dpr;
 
     canvas.width = boxW + margin * 2;
     canvas.height = boxH + tipH + margin * 2;
 
     const x = margin, y = margin, r = 10 * dpr;
-
-    ctx.save();
-    ctx.shadowColor = bgColor === '#007aff' ? 'rgba(0, 122, 255, 0.38)' : 'rgba(0, 0, 0, 0.22)';
-    ctx.shadowBlur = 8 * dpr;
-    ctx.shadowOffsetY = 3 * dpr;
 
     ctx.fillStyle = bgColor;
     ctx.beginPath();
@@ -622,7 +650,6 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
     ctx.fill();
-    ctx.restore();
 
     ctx.font = font;
     ctx.fillStyle = textColor;
@@ -635,7 +662,7 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     map.addImage(id, { width: canvas.width, height: canvas.height, data: imgData.data }, { pixelRatio: dpr });
 }
 
-// ==================== 2. 地圖初始化與超銳利無模糊設定 ====================
+// ==================== 2. 地圖初始化與「自由縮放平移手勢解鎖」 ====================
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('banner-main-icon').innerHTML = APPLE_SVGS.departRing;
     document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.straight;
@@ -644,16 +671,28 @@ window.addEventListener('DOMContentLoaded', () => {
     lockInputAgainstVibration();
 });
 
+function setMapFollowingState(following) {
+    isMapFollowingUser = following;
+    const fab = document.getElementById('loc-fab-btn');
+    if (fab) {
+        fab.classList.toggle('free-pan-mode', !following);
+    }
+}
+
 function initMapEngine() {
     map = new maplibregl.Map({
         container: 'map',
         style: MAP_STYLES.day,
         center: [userLon, userLat],
-        zoom: 16.5,
-        pitch: 0, // 預設未導航時採用 0 度垂直正視角，確保地圖從上到下 100% 銳利清晰不模糊！
+        zoom: 16.2,
+        pitch: 0,
         bearing: 0,
-        antialias: true,
-        pixelRatio: Math.min(window.devicePixelRatio || 2, 3), // 強制開啟 iPhone 3x 超視網膜最高解析度渲染
+        antialias: false, // 關閉高耗能 MSAA 反鋸齒，搭配 Retina 2x 已極致銳利且流暢度翻倍！
+        pixelRatio: Math.min(window.devicePixelRatio || 2, 2), // 鎖定最佳 2x Retina，減少 55% GPU 像素負載
+        dragRotate: true,
+        touchZoomRotate: true,
+        doubleClickZoom: true,
+        touchPitch: true,
         fadeDuration: 0
     });
 
@@ -675,10 +714,24 @@ function initMapEngine() {
         applyAppleMapsShaderStyle();
     });
 
-    map.on('dragstart', () => { isMapFollowingUser = false; });
+    // 關鍵修復：只要手指一觸碰地圖 (單指拖曳、雙指捏合縮放、滑鼠滾輪)，立刻解除鎖定，絕不卡住手勢！
+    const mapCanvas = map.getCanvasContainer();
+    const unlockMapOnUserTouch = () => {
+        isUserInteractingWithMap = true;
+        if (isMapFollowingUser) {
+            setMapFollowingState(false);
+        }
+    };
+    mapCanvas.addEventListener('touchstart', unlockMapOnUserTouch, { passive: true });
+    mapCanvas.addEventListener('mousedown', unlockMapOnUserTouch, { passive: true });
+    mapCanvas.addEventListener('wheel', unlockMapOnUserTouch, { passive: true });
+
+    map.on('moveend', () => {
+        isUserInteractingWithMap = false;
+    });
 
     map.on('click', async (e) => {
-        if (!isActiveNavigation) {
+        if (!isActiveNavigation && document.getElementById('search-card').style.display !== 'none') {
             const cLat = e.lngLat.lat, cLon = e.lngLat.lng;
             showToast('📍 正在解析點擊處門牌地址...');
             const revInfo = await reverseGeocodeAddress(cLat, cLon);
@@ -687,6 +740,13 @@ function initMapEngine() {
             executeMultiRoutePlanning(cLat, cLon, revInfo.title, revInfo.fullAddress);
         }
     });
+}
+
+// 單手快速放大縮小按鈕 (+ / -)
+function zoomMapByStep(delta) {
+    if (!map) return;
+    setMapFollowingState(false);
+    map.easeTo({ zoom: map.getZoom() + delta, duration: 220 });
 }
 
 async function reverseGeocodeAddress(lat, lon) {
@@ -727,7 +787,7 @@ function applyAppleMapsShaderStyle() {
     map.setLight({
         anchor: 'viewport',
         color: '#ffffff',
-        intensity: 0.52,
+        intensity: 0.5,
         position: [1.4, 215, 35]
     });
 
@@ -742,11 +802,12 @@ function applyAppleMapsShaderStyle() {
         if (!isDarkMode && id.includes('road') && !id.includes('casing') && layer.type === 'line') {
             try { map.setPaintProperty(layer.id, 'line-color', '#9aa3af'); } catch (e) {}
         }
+        // 關鍵效能優化：3D 建築物僅在 zoom >= 15.2 (近距離導航時) 才升起，大範圍預覽時不渲染數萬棟 3D 建築，徹底消除縮放卡頓！
         if (layer.type === 'fill-extrusion' || id.includes('building-3d')) {
             try {
-                map.setLayerZoomRange(layer.id, 14, 24);
+                map.setLayerZoomRange(layer.id, 15.2, 24);
                 map.setPaintProperty(layer.id, 'fill-extrusion-color', isDarkMode ? '#2c2c2e' : '#f5f6f8');
-                map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.94);
+                map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.92);
             } catch (e) {}
         }
         if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
@@ -775,7 +836,7 @@ function applyAppleMapsShaderStyle() {
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
                 'line-color': '#7c96b8',
-                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 18, 13],
+                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 18, 12],
                 'line-opacity': 0.75
             }
         }, buildingLayerId);
@@ -789,8 +850,8 @@ function applyAppleMapsShaderStyle() {
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
                 'line-color': '#0048b3',
-                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 9, 18, 20],
-                'line-opacity': 0.96
+                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 8, 18, 19],
+                'line-opacity': 0.95
             }
         }, buildingLayerId);
     }
@@ -803,7 +864,7 @@ function applyAppleMapsShaderStyle() {
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
                 'line-color': ['get', 'color'],
-                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 18, 14.5],
+                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 18, 13.5],
                 'line-opacity': 1.0
             }
         }, buildingLayerId);
@@ -835,8 +896,13 @@ function applyAppleMapsShaderStyle() {
     if (activeRouteCoords.length > 0) renderRouteLayersOnMap();
 }
 
+// 具備髒標記快取 (Dirty-Check) 的路名氣泡更新器，避免重複繪製 Canvas 導致卡頓
 function updateWebGLRoadBubbles(primaryText, primaryLon, primaryLat, secondaryText, secLon, secLat) {
     if (!map || !map.getSource('road-bubbles-source')) return;
+    const cacheKey = `${primaryText}_${primaryLon.toFixed(4)}_${secondaryText || ''}`;
+    if (cacheKey === lastBubbleCacheKey) return;
+    lastBubbleCacheKey = cacheKey;
+
     const features = [];
     if (primaryText && primaryLon && primaryLat) {
         registerRoadBubbleImage('bubble-blue', primaryText, '#007aff', '#ffffff');
@@ -860,19 +926,15 @@ function updateWebGLRoadBubbles(primaryText, primaryLon, primaryLat, secondaryTe
 // ==================== 3. 兩階段導航控制：「🚀 開始導航」與「✖ 結束／取消導航」 ====================
 function onPrimaryNavButtonClick() {
     if (isActiveNavigation) {
-        // 若已在導航中，點擊可打開路線搜尋與切換面板
         showSearchOverlay();
     } else {
-        // 若尚未進入導航，點擊即啟動正式 3D 導航
         startTurnByTurnNavigation();
     }
 }
 
-// 階段二：按下「🚀 開始導航」按鈕後，正式切換為 3D 56° 車頭追尾導航視角！
 async function startTurnByTurnNavigation() {
     await requestiOSPermissionsIfNeeded();
     if (activeRouteCoords.length < 2) {
-        // 若還沒搜尋路線就直接按開始導航，先自動執行搜尋框內的地點規劃
         const val = document.getElementById('dest-input').value.trim();
         if (val) {
             await planRoute();
@@ -885,39 +947,36 @@ async function startTurnByTurnNavigation() {
     }
 
     isActiveNavigation = true;
-    isMapFollowingUser = true;
+    setMapFollowingState(true);
     lockInputAgainstVibration();
 
-    // 隱藏搜尋與預覽卡片，切換為頂部銳利轉彎看板
     document.getElementById('search-card').style.display = 'none';
     document.getElementById('apple-top-banner').style.display = 'flex';
 
-    // 更新底部主按鈕文字為「🔀 換路線」
     const mainBtn = document.getElementById('main-nav-toggle-btn');
     mainBtn.innerText = '🔀 換路線';
     mainBtn.className = 'action-chip';
 
-    // 飛入自車位置並啟動 56 度 3D 追尾視角
     recenterCamera();
     updateNavigationProgress();
 
     if (targetDest) {
-        showToast(`🚀 正式開始導航前往：${targetDest.name}`);
+        showToast(`🚀 正式開始導航前往：${targetDest.name} (單指可隨時自由拖曳地圖)`);
         speakVoice(`開始導航前往${targetDest.name}，請順行出發`, 'nav_go');
     }
 }
 
-// 按下「✖ 結束」或「✖ 取消路線」按鈕：徹底清空路線、恢復 0° 超清晰正北視角並回到搜尋介面！
 function cancelAndClearRoute() {
     if (isSimulatingDrive) stopSimulationDrive();
     isActiveNavigation = false;
-    isMapFollowingUser = false;
+    setMapFollowingState(false);
     candidateRoutes = [];
     activeRouteCoords = [];
     routeSteps = [];
     passedStepIndex = 0;
     totalRouteMeters = 0;
     targetDest = null;
+    lastBubbleCacheKey = '';
 
     if (destMarker) { destMarker.remove(); destMarker = null; }
     if (map && map.getSource('main-route-source')) {
@@ -930,7 +989,6 @@ function cancelAndClearRoute() {
         map.getSource('road-bubbles-source').setData({ 'type': 'FeatureCollection', 'features': [] });
     }
 
-    // 隱藏導航看板與預覽按鈕列，恢復乾淨的搜尋面板
     document.getElementById('apple-top-banner').style.display = 'none';
     document.getElementById('steps-drawer').style.display = 'none';
     document.getElementById('route-options-selector').style.display = 'none';
@@ -938,7 +996,6 @@ function cancelAndClearRoute() {
     document.getElementById('apex-pill').style.display = 'none';
     document.getElementById('search-card').style.display = 'flex';
 
-    // 重置底部 ETA 與地址驗證欄
     document.getElementById('eta-time').innerText = '--:--';
     document.getElementById('eta-min').innerText = '--';
     document.getElementById('eta-km').innerText = '--';
@@ -951,14 +1008,13 @@ function cancelAndClearRoute() {
     mainBtn.innerText = '🚀 開始導航';
     mainBtn.className = 'action-chip chip-start-nav';
 
-    // 鏡頭平滑回到自車正上方 0 度垂直正視角 (100% 銳利清晰)
     if (map) {
         map.easeTo({
             center: [userLon, userLat],
-            zoom: 16.5,
+            zoom: 16.2,
             pitch: 0,
             bearing: 0,
-            duration: 600
+            duration: 500
         });
     }
     showToast('⏹ 已結束導航並清除路線');
@@ -996,8 +1052,8 @@ function renderStepsDrawerList() {
         `;
         row.onclick = (ev) => {
             ev.stopPropagation();
-            isMapFollowingUser = false;
-            map.easeTo({ center: [st.lon, st.lat], zoom: 17.8, pitch: 45, duration: 500 });
+            setMapFollowingState(false);
+            map.easeTo({ center: [st.lon, st.lat], zoom: 17.5, pitch: 40, duration: 450 });
             showToast(`🔍 預覽路口：${st.name}`);
         };
         drawer.appendChild(row);
@@ -1184,7 +1240,7 @@ function selectCandidateRoute(idx) {
     selectedRouteIndex = idx;
     const chosen = candidateRoutes[idx];
     totalRouteMeters = chosen.distance;
-    activeRouteCoords = resampleAndAnalyzeRoute(chosen.rawCoords, 4.0);
+    activeRouteCoords = resampleAndAnalyzeRoute(chosen.rawCoords, 8.0);
     routeSteps = chosen.steps;
     passedStepIndex = 0;
 
@@ -1192,9 +1248,10 @@ function selectCandidateRoute(idx) {
     renderRouteOptionCards();
     renderRouteLayersOnMap();
     updateNavigationProgress();
-    showToast(`✅ 已選擇「${chosen.label}」(${(chosen.distance/1000).toFixed(1)} km)，請按「🚀 開始導航」`);
+    showToast(`✅ 已選擇「${chosen.label}」(${(chosen.distance/1000).toFixed(1)} km)，可自由縮放或按「🚀 開始導航」`);
 }
 
+// 關鍵效能升級：將連續相同顏色的路段合併為單一連續 LineString，減少 99% GeoJSON 物件數量，徹底根除縮放卡頓！
 function renderRouteLayersOnMap() {
     if (!map || !map.getSource('main-route-source')) return;
 
@@ -1216,23 +1273,40 @@ function renderRouteLayersOnMap() {
     }
 
     const mainFeatures = [];
-    for (let i = 0; i < activeRouteCoords.length - 1; i++) {
-        const pt1 = activeRouteCoords[i];
-        const pt2 = activeRouteCoords[i + 1];
-        const s = pt1.sharpness || 0;
+    if (activeRouteCoords.length >= 2) {
+        let currentColor = '#007aff';
+        let currentSegmentCoords = [[activeRouteCoords[0].lon, activeRouteCoords[0].lat]];
 
-        let segColor = '#007aff';
-        if (s > 0.72) segColor = '#ff3b30';
-        else if (s > 0.45) segColor = '#ff9500';
+        for (let i = 0; i < activeRouteCoords.length - 1; i++) {
+            const pt1 = activeRouteCoords[i];
+            const pt2 = activeRouteCoords[i + 1];
+            const s = pt1.sharpness || 0;
 
-        mainFeatures.push({
-            'type': 'Feature',
-            'properties': { 'color': segColor },
-            'geometry': {
-                'type': 'LineString',
-                'coordinates': [[pt1.lon, pt1.lat], [pt2.lon, pt2.lat]]
+            let segColor = '#007aff';
+            if (s > 0.72) segColor = '#ff3b30';
+            else if (s > 0.45) segColor = '#ff9500';
+
+            if (segColor === currentColor) {
+                currentSegmentCoords.push([pt2.lon, pt2.lat]);
+            } else {
+                if (currentSegmentCoords.length >= 2) {
+                    mainFeatures.push({
+                        'type': 'Feature',
+                        'properties': { 'color': currentColor },
+                        'geometry': { 'type': 'LineString', 'coordinates': currentSegmentCoords }
+                    });
+                }
+                currentColor = segColor;
+                currentSegmentCoords = [[pt1.lon, pt1.lat], [pt2.lon, pt2.lat]];
             }
-        });
+        }
+        if (currentSegmentCoords.length >= 2) {
+            mainFeatures.push({
+                'type': 'Feature',
+                'properties': { 'color': currentColor },
+                'geometry': { 'type': 'LineString', 'coordinates': currentSegmentCoords }
+            });
+        }
     }
     map.getSource('main-route-source').setData({ 'type': 'FeatureCollection', 'features': mainFeatures });
 }
@@ -1241,6 +1315,7 @@ function renderRouteLayersOnMap() {
 function showSearchOverlay() {
     if (isSimulatingDrive) stopSimulationDrive();
     isActiveNavigation = false;
+    setMapFollowingState(false);
     document.getElementById('apple-top-banner').style.display = 'none';
     document.getElementById('search-card').style.display = 'flex';
     const mainBtn = document.getElementById('main-nav-toggle-btn');
@@ -1258,7 +1333,7 @@ function refreshCurrentGPSBeforeRoute() {
             localStorage.setItem('last_real_gps', JSON.stringify({ lat: userLat, lon: userLon }));
             if (userMarker) userMarker.setLngLat([userLon, userLat]);
             resolve();
-        }, () => resolve(), { enableHighAccuracy: true, timeout: 2200, maximumAge: 5000 });
+        }, () => resolve(), { enableHighAccuracy: true, timeout: 1800, maximumAge: 10000 });
     });
 }
 
@@ -1286,7 +1361,6 @@ async function planRoute() {
     }
 }
 
-// 階段一：規劃出多條路線後，進入「0° 垂直超清晰路線預覽模式」，等待使用者點擊「🚀 開始導航」
 async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddressText = '') {
     if (!destLat || !destLon) return;
     if (isSimulatingDrive) stopSimulationDrive();
@@ -1305,7 +1379,7 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
 
     if (destMarker) destMarker.remove();
     const destEl = document.createElement('div');
-    destEl.style.cssText = 'width:22px;height:22px;border-radius:50%;background:#ff3b30;border:3.5px solid #ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+    destEl.style.cssText = 'width:22px;height:22px;border-radius:50%;background:#ff3b30;border:3.5px solid #ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.4);pointer-events:none;';
     destMarker = new maplibregl.Marker({ element: destEl }).setLngLat([destLon, destLat]).addTo(map);
 
     try {
@@ -1315,32 +1389,33 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
             selectedRouteIndex = 0;
             const primary = routes[0];
             totalRouteMeters = primary.distance;
-            activeRouteCoords = resampleAndAnalyzeRoute(primary.rawCoords, 4.0);
+            // 抽樣間距設為 8 公尺，兼顧彎道平滑度與極致效能
+            activeRouteCoords = resampleAndAnalyzeRoute(primary.rawCoords, 8.0);
             routeSteps = primary.steps;
             passedStepIndex = 0;
 
             isActiveNavigation = false;
-            isMapFollowingUser = false;
+            // 關鍵：規劃完預覽時將跟隨設為 false，讓使用者可以隨時自由移動、雙指放大縮小檢視路線！
+            setMapFollowingState(false);
 
             renderRouteLayersOnMap();
             renderRouteOptionCards();
             showSearchOverlay();
             updateNavigationProgress();
 
-            // 關鍵優化：預覽全路線時使用 pitch: 0 (垂直正視角)，徹底消除直立時地圖上半部遠景失焦模糊！
             const bounds = new maplibregl.LngLatBounds();
             primary.rawCoords.forEach(c => bounds.extend([c.lon, c.lat]));
             const isLandscape = window.innerWidth > window.innerHeight;
             map.fitBounds(bounds, {
                 padding: isLandscape
-                    ? { top: 60, bottom: 60, left: 380, right: 370 }
-                    : { top: 260, bottom: 230, left: 45, right: 45 },
+                    ? { top: 50, bottom: 50, left: 380, right: 370 }
+                    : { top: 250, bottom: 220, left: 45, right: 45 },
                 pitch: 0,
                 bearing: 0,
-                duration: 700
+                duration: 600
             });
 
-            showToast(`✅ 路線已備妥！請確認路線後點擊綠色「🚀 開始導航」`);
+            showToast(`✅ 路線已備妥！可自由縮放移動，或點擊綠色「🚀 開始導航」`);
             return;
         }
     } catch (e) {
@@ -1369,7 +1444,7 @@ function updateNavigationProgress() {
 
     while (passedStepIndex < routeSteps.length - 1) {
         const step = routeSteps[passedStepIndex];
-        if (passedStepIndex === 0 && step.modifier === 'depart' && nearestIdx > 3) {
+        if (passedStepIndex === 0 && step.modifier === 'depart' && nearestIdx > 2) {
             passedStepIndex++;
         } else if (passedStepIndex > 0 && getDistanceMeters(userLat, userLon, step.lat, step.lon) < 18) {
             passedStepIndex++;
@@ -1426,11 +1501,10 @@ function updateNavigationProgress() {
         }
     }
 
-    // 僅在正式導航或模擬巡航時顯示彎道減速膠囊
     const apexPill = document.getElementById('apex-pill');
     if (isActiveNavigation || isSimulatingDrive) {
         let maxSharpness = 0;
-        for (let j = 2; j <= 14; j++) {
+        for (let j = 1; j <= 8; j++) {
             const pt = activeRouteCoords[Math.min(nearestIdx + j, activeRouteCoords.length - 1)];
             if (pt.sharpness > maxSharpness) maxSharpness = pt.sharpness;
         }
@@ -1445,7 +1519,6 @@ function updateNavigationProgress() {
         apexPill.style.display = 'none';
     }
 
-    // 更新底部三欄 ETA
     const remRatio = Math.max(0, 1 - nearestIdx / Math.max(1, activeRouteCoords.length));
     const remMeters = totalRouteMeters * remRatio;
     const avgMps = Math.max(8.5, currentSpeedKmh / 3.6);
@@ -1474,7 +1547,7 @@ function getTurnText(mod) {
     return '直行';
 }
 
-// ==================== 5. 真實 GPS 鎖定、超速警告與 60FPS 模擬巡航 ====================
+// ==================== 5. 節流防卡頓感測器與 60FPS 模擬巡航 ====================
 async function initSensors() {
     try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) {}
     window.addEventListener('deviceorientation', handleOrientation, true);
@@ -1484,7 +1557,7 @@ async function initSensors() {
             userLon = pos.coords.longitude;
             localStorage.setItem('last_real_gps', JSON.stringify({ lat: userLat, lon: userLon }));
             if (userMarker) userMarker.setLngLat([userLon, userLat]);
-            if (map && activeRouteCoords.length === 0) map.jumpTo({ center: [userLon, userLat], zoom: 16.8, pitch: 0 });
+            if (map && activeRouteCoords.length === 0) map.jumpTo({ center: [userLon, userLat], zoom: 16.5, pitch: 0 });
 
             const rev = await reverseGeocodeAddress(userLat, userLon);
             currentRoadName = rev.roadName || rev.title;
@@ -1559,8 +1632,13 @@ function getScreenOrientationAngle() {
         ? window.screen.orientation.angle : (window.orientation || 0);
 }
 
+// 關鍵修復：陀螺儀加入 60ms 節流與 `isUserInteractingWithMap` 保護，絕不打斷手指拖曳與縮放！
 function handleOrientation(e) {
-    if (isSimulatingDrive) return;
+    if (isSimulatingDrive || isUserInteractingWithMap) return;
+    const now = performance.now();
+    if (now - lastOrientationUpdateMs < 60) return;
+    lastOrientationUpdateMs = now;
+
     const screenAngle = getScreenOrientationAngle();
     let rawHeading = 0;
     if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
@@ -1576,13 +1654,12 @@ function handleOrientation(e) {
         let diff = rawHeading - smoothedYaw;
         while (diff > 180) diff -= 360;
         while (diff < -180) diff += 360;
-        if (Math.abs(diff) > 1.5) {
-            smoothedYaw = (smoothedYaw + diff * 0.16 + 360) % 360;
-        }
+        if (Math.abs(diff) < 2.0) return; // 小於 2 度微幅晃動完全不重繪地圖，極致順暢！
+        smoothedYaw = (smoothedYaw + diff * 0.22 + 360) % 360;
     }
 
     const totalBearing = (smoothedYaw + headingOffsetDeg + 360) % 360;
-    if (isMapFollowingUser && map) {
+    if (isMapFollowingUser && isActiveNavigation && map) {
         map.jumpTo({ bearing: totalBearing });
         if (puckArrowEl) puckArrowEl.style.transform = `rotate(0deg)`;
     } else if (map && puckArrowEl) {
@@ -1610,7 +1687,8 @@ function handleGPS(pos) {
     }
 
     if (userMarker) userMarker.setLngLat([userLon, userLat]);
-    if (isMapFollowingUser && map) {
+    // 僅在「跟隨模式開啟」且「使用者手指未觸碰螢幕」時才移動鏡頭
+    if (isMapFollowingUser && !isUserInteractingWithMap && map) {
         map.jumpTo({ center: [userLon, userLat] });
     }
     if (activeRouteCoords.length > 1) {
@@ -1639,7 +1717,7 @@ function updateSpeedUI() {
 
 function recenterCamera() {
     requestiOSPermissionsIfNeeded();
-    isMapFollowingUser = true;
+    setMapFollowingState(true);
     if (activeRouteCoords.length > 1) {
         let nearestIdx = 0, minDist = Infinity;
         for (let i = 0; i < activeRouteCoords.length; i++) {
@@ -1653,13 +1731,13 @@ function recenterCamera() {
     if (map) {
         map.easeTo({
             center: [userLon, userLat],
-            zoom: isActiveNavigation ? 17.6 : 16.8,
-            pitch: isActiveNavigation ? 56 : 0,
+            zoom: isActiveNavigation ? 17.4 : 16.5,
+            pitch: isActiveNavigation ? 54 : 0,
             bearing: isActiveNavigation ? totalBearing : 0,
-            duration: 450
+            duration: 400
         });
     }
-    showToast('🎯 已鎖定自車位置');
+    showToast('🎯 已鎖定自車中心 (隨時單指拖曳可自由檢視地圖)');
 }
 
 function toggleSimulationDrive() {
@@ -1673,20 +1751,19 @@ function startSimulationDrive() {
         showToast('⚠️ 請先輸入目的地並搜尋路線');
         return;
     }
-    // 啟動模擬時自動切換進入正式 3D 導航介面
     if (!isActiveNavigation) {
         startTurnByTurnNavigation();
     }
     preSimSnapshot = { lat: userLat, lon: userLon, yaw: smoothedYaw, offset: headingOffsetDeg };
     isSimulatingDrive = true;
-    isMapFollowingUser = true;
+    setMapFollowingState(true);
     simFloatIndex = 0;
     passedStepIndex = 0;
     lastSimTimestamp = performance.now();
 
     const btn = document.getElementById('sim-btn');
     btn.innerText = '⏹ 停止';
-    showToast('🏎️ 已啟動 60FPS 模擬巡航 (停止即回原點)');
+    showToast('🏎️ 已啟動模擬巡航 (巡航中仍可雙指縮放或拖曳地圖)');
 
     function simStep(now) {
         if (!isSimulatingDrive) return;
@@ -1717,20 +1794,22 @@ function startSimulationDrive() {
         headingOffsetDeg = 0;
 
         if (userMarker) userMarker.setLngLat([userLon, userLat]);
-        if (puckArrowEl) puckArrowEl.style.transform = `rotate(0deg)`;
-        if (isMapFollowingUser && map) {
+        // 模擬巡航時，若使用者沒有手動拖曳地圖，才自動跟隨鏡頭；若手動拖曳則允許自由看地圖！
+        if (isMapFollowingUser && !isUserInteractingWithMap && map) {
+            if (puckArrowEl) puckArrowEl.style.transform = `rotate(0deg)`;
             map.jumpTo({
                 center: [userLon, userLat],
-                bearing: smoothedYaw,
-                pitch: 56,
-                zoom: 17.6
+                bearing: smoothedYaw
             });
+        } else if (map && puckArrowEl) {
+            puckArrowEl.style.transform = `rotate(${smoothedYaw - map.getBearing()}deg)`;
         }
 
         updateNavigationProgress();
 
         const speedMps = currentSpeedKmh / 3.6;
-        simFloatIndex += (speedMps * dt) / 4.0;
+        // 對應 8 公尺抽樣間距
+        simFloatIndex += (speedMps * dt) / 8.0;
         simAnimFrameId = requestAnimationFrame(simStep);
     }
 
@@ -1756,10 +1835,11 @@ function stopSimulationDrive() {
 
         if (userMarker) userMarker.setLngLat([userLon, userLat]);
         if (map) {
-            map.jumpTo({
+            map.easeTo({
                 center: [userLon, userLat],
-                bearing: smoothedYaw,
-                pitch: isActiveNavigation ? 56 : 0
+                bearing: isActiveNavigation ? smoothedYaw : 0,
+                pitch: isActiveNavigation ? 54 : 0,
+                duration: 400
             });
         }
         updateNavigationProgress();
@@ -2018,7 +2098,7 @@ function resampleAndAnalyzeRoute(pts, spacing) {
 
     for (let i = 0; i < result.length; i++) {
         let maxDiff = 0;
-        for (let look = 1; look <= 4; look++) {
+        for (let look = 1; look <= 3; look++) {
             const ahead = result[Math.min(i + look, result.length - 1)];
             let diff = ahead.heading - result[i].heading;
             while (diff > 180) diff -= 360;
