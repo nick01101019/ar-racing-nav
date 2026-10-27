@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Apple 導航">
-    <title>Apple Maps 3D 旗艦導航 (雙游標/誤觸/重算修復版)</title>
+    <title>Apple Maps 3D 旗艦導航 (深色路線修復 + 橫向精簡版)</title>
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -19,6 +19,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang TC", sans-serif;
             -webkit-font-smoothing: antialiased;
         }
+        body.dark-mode { background-color: #0d0d0f; }
 
         /* 1. 全螢幕 GPU WebGL 3D 向量地圖 */
         #map {
@@ -27,35 +28,35 @@
         }
         .maplibregl-control-container { display: none !important; }
 
-        /* 非阻斷式提示膠囊 (移至螢幕中下方，絕不遮擋頂部黑色導航看板！) */
+        /* 非阻斷式提示膠囊 */
         #hud-toast {
             position: fixed; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 168px); left: 50%;
             transform: translateX(-50%) scale(0.9);
             background: rgba(28, 28, 30, 0.92); color: #ffffff;
-            padding: 9px 20px; border-radius: 999px; font-size: 13px; font-weight: 800;
-            z-index: 10000; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            padding: 8px 18px; border-radius: 999px; font-size: 12px; font-weight: 800;
+            z-index: 10000; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
             opacity: 0; pointer-events: none; transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
             white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
-            border: 1px solid rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.18);
         }
         #hud-toast.toast-show { opacity: 1; transform: translateX(-50%) scale(1); }
 
         /* AR 實景畫中畫懸浮窗 */
         #ar-pip-window {
             position: fixed; top: calc(max(20px, env(safe-area-inset-top)) + 16px); right: max(14px, env(safe-area-inset-right));
-            width: 155px; height: 102px; border-radius: 18px; overflow: hidden; z-index: 35;
-            border: 2.5px solid #ffffff; box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+            width: 150px; height: 98px; border-radius: 16px; overflow: hidden; z-index: 35;
+            border: 2px solid #ffffff; box-shadow: 0 12px 28px rgba(0,0,0,0.4);
             background: #000; display: none; pointer-events: auto; transition: width 0.25s, height 0.25s;
         }
-        #ar-pip-window.expanded { width: 240px; height: 158px; }
+        #ar-pip-window.expanded { width: 220px; height: 145px; }
         #ar-pip-video { width: 100%; height: 100%; object-fit: cover; }
 
         /* ==================== 主 UI 無碰撞懸浮層 ==================== */
         #ui-layer {
             position: fixed; inset: 0; width: 100vw; height: 100%; z-index: 10;
             pointer-events: none !important;
-            padding-top: calc(max(22px, env(safe-area-inset-top)) + 14px);
-            padding-bottom: max(14px, env(safe-area-inset-bottom));
+            padding-top: calc(max(22px, env(safe-area-inset-top)) + 12px);
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             padding-left: max(12px, env(safe-area-inset-left));
             padding-right: max(12px, env(safe-area-inset-right));
             display: flex; flex-direction: column; justify-content: space-between;
@@ -63,7 +64,7 @@
         }
 
         .top-left-column {
-            width: 100%; max-width: 450px; margin: 0 auto;
+            width: 100%; max-width: 440px; margin: 0 auto;
             display: flex; flex-direction: column; gap: 8px; min-height: 0;
             pointer-events: none;
         }
@@ -72,176 +73,178 @@
         #search-card {
             pointer-events: auto; position: relative; width: 100%;
             background: #ffffff;
-            border-radius: 22px; padding: 12px 14px;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18); border: 1px solid rgba(0, 0, 0, 0.08);
-            display: flex; flex-direction: column; gap: 10px; z-index: 500;
+            border-radius: 20px; padding: 11px 13px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2); border: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex; flex-direction: column; gap: 8px; z-index: 500;
         }
-        body.dark-mode #search-card { background: #242426; border-color: rgba(255,255,255,0.14); color: #fff; }
+        body.dark-mode #search-card { background: #222225; border-color: rgba(255,255,255,0.14); color: #fff; }
         
         .search-row { display: flex; gap: 8px; align-items: center; width: 100%; }
         .search-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
         .search-input-wrap input {
-            width: 100%; padding: 11px 30px 11px 14px; border-radius: 14px;
-            border: 1.5px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; font-size: 15px; font-weight: 700; outline: none;
+            width: 100%; padding: 10px 28px 10px 12px; border-radius: 12px;
+            border: 1.5px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; font-size: 14px; font-weight: 700; outline: none;
             user-select: text; -webkit-user-select: text;
         }
-        body.dark-mode .search-input-wrap input { background: #1c1c1e; border-color: #3a3a3c; color: #fff; }
+        body.dark-mode .search-input-wrap input { background: #161618; border-color: #3a3a3c; color: #fff; }
         .search-input-wrap input:focus { border-color: #007aff; }
-        .clear-btn { position: absolute; right: 8px; background: none; border: none; color: #8e8e93; font-size: 16px; cursor: pointer; display: none; }
+        .clear-btn { position: absolute; right: 8px; background: none; border: none; color: #8e8e93; font-size: 15px; cursor: pointer; display: none; }
         .search-submit-btn {
-            background: #007aff; color: #fff; border: none; border-radius: 14px;
-            padding: 11px 16px; font-size: 14px; font-weight: 800; cursor: pointer; flex-shrink: 0;
+            background: #007aff; color: #fff; border: none; border-radius: 12px;
+            padding: 10px 14px; font-size: 13px; font-weight: 800; cursor: pointer; flex-shrink: 0;
         }
 
         .route-filter-chips {
-            display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+            display: flex; gap: 5px; align-items: center; flex-wrap: wrap;
         }
         .filter-chip {
-            padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+            padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 800;
             background: #f2f2f7; color: #48484a; border: 1.5px solid transparent;
-            cursor: pointer; white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+            cursor: pointer; white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 3px;
         }
-        body.dark-mode .filter-chip { background: #3a3a3c; color: #d1d1d6; }
+        body.dark-mode .filter-chip { background: #333336; color: #d1d1d6; }
         .filter-chip.active {
             background: rgba(0, 122, 255, 0.12); color: #007aff; border-color: #007aff;
         }
-        body.dark-mode .filter-chip.active { background: rgba(10, 132, 255, 0.22); color: #64d2ff; border-color: #0a84ff; }
+        body.dark-mode .filter-chip.active { background: rgba(10, 132, 255, 0.25); color: #64d2ff; border-color: #0a84ff; }
 
         /* 多路線方案比較卡片 */
-        #route-options-selector { display: none; gap: 8px; width: 100%; padding-top: 2px; }
+        #route-options-selector { display: none; gap: 6px; width: 100%; padding-top: 2px; }
         .route-opt-card {
-            flex: 1; padding: 9px 11px; border-radius: 14px; background: #f2f2f7;
+            flex: 1; padding: 8px 9px; border-radius: 12px; background: #f2f2f7;
             border: 2px solid transparent; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
         }
         body.dark-mode .route-opt-card { background: #2c2c2e; }
-        .route-opt-card.selected { background: rgba(0, 122, 255, 0.1); border-color: #007aff; }
-        .opt-tag { font-size: 11px; font-weight: 800; color: #007aff; }
-        .opt-meta { font-size: 14px; font-weight: 900; color: #1c1c1e; }
+        .route-opt-card.selected { background: rgba(0, 122, 255, 0.12); border-color: #007aff; }
+        .opt-tag { font-size: 10px; font-weight: 800; color: #007aff; }
+        body.dark-mode .opt-tag { color: #64d2ff; }
+        .opt-meta { font-size: 13px; font-weight: 900; color: #1c1c1e; }
         body.dark-mode .opt-meta { color: #fff; }
-        .opt-sub { font-size: 11px; font-weight: 700; color: #16a34a; }
+        .opt-sub { font-size: 10px; font-weight: 700; color: #16a34a; }
+        body.dark-mode .opt-sub { color: #4ade80; }
 
-        /* 路線預覽階段專屬：「🚀 繼續/開始導航」與「✖ 取消路線」雙按鈕列 */
+        /* 路線預覽階段專屬按鈕列 */
         #preview-action-bar {
-            display: none; gap: 8px; width: 100%; padding-top: 4px;
+            display: none; gap: 6px; width: 100%; padding-top: 2px;
         }
         .btn-start-go {
-            flex: 2; padding: 12px 16px; border-radius: 14px; border: none;
-            background: #34c759; color: #ffffff; font-size: 16px; font-weight: 900;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-            box-shadow: 0 6px 18px rgba(52, 199, 89, 0.35);
+            flex: 2; padding: 10px 14px; border-radius: 12px; border: none;
+            background: #34c759; color: #ffffff; font-size: 15px; font-weight: 900;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+            box-shadow: 0 5px 15px rgba(52, 199, 89, 0.35);
         }
         .btn-start-go:active { transform: scale(0.97); }
         .btn-cancel-route {
-            flex: 1; padding: 12px 12px; border-radius: 14px; border: none;
-            background: rgba(255, 59, 48, 0.12); color: #ff3b30; font-size: 14px; font-weight: 800;
+            flex: 1; padding: 10px 10px; border-radius: 12px; border: none;
+            background: rgba(255, 59, 48, 0.14); color: #ff453a; font-size: 13px; font-weight: 800;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
         /* 搜尋建議下拉清單 */
         #suggestions-box {
-            position: absolute; top: calc(100% + 8px); left: 0; width: 100%; max-height: 250px; overflow-y: auto;
-            background: #ffffff; border-radius: 18px; box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+            position: absolute; top: calc(100% + 6px); left: 0; width: 100%; max-height: 230px; overflow-y: auto;
+            background: #ffffff; border-radius: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.3);
             border: 1.5px solid #007aff; display: none; flex-direction: column; z-index: 1000;
         }
-        body.dark-mode #suggestions-box { background: #28282c; border-color: #0a84ff; }
+        body.dark-mode #suggestions-box { background: #262629; border-color: #0a84ff; }
         .suggestion-item {
-            padding: 11px 14px; border-bottom: 1px solid rgba(0,0,0,0.06);
-            display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; cursor: pointer;
+            padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.06);
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; cursor: pointer;
         }
         body.dark-mode .suggestion-item { border-bottom-color: rgba(255,255,255,0.08); }
         .suggestion-item:active { background: rgba(0, 122, 255, 0.12); }
         .sug-info-col { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-        .sug-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .sug-title { font-size: 14px; font-weight: 800; color: #1c1c1e; }
+        .sug-title-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .sug-title { font-size: 13px; font-weight: 800; color: #1c1c1e; }
         body.dark-mode .sug-title { color: #fff; }
         .verified-badge {
-            font-size: 10px; font-weight: 800; color: #16a34a; background: rgba(22, 163, 74, 0.12);
-            padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+            font-size: 9px; font-weight: 800; color: #16a34a; background: rgba(22, 163, 74, 0.12);
+            padding: 2px 5px; border-radius: 4px; white-space: nowrap;
         }
         .sug-addr-full {
-            font-size: 12px; font-weight: 600; color: #48484a; line-height: 1.35;
-            background: #f2f2f7; padding: 4px 8px; border-radius: 6px; word-break: break-all;
+            font-size: 11px; font-weight: 600; color: #48484a; line-height: 1.3;
+            background: #f2f2f7; padding: 3px 7px; border-radius: 5px; word-break: break-all;
         }
-        body.dark-mode .sug-addr-full { color: #d1d1d6; background: #1c1c1e; }
+        body.dark-mode .sug-addr-full { color: #d1d1d6; background: #18181a; }
         .sug-dist {
-            font-size: 12px; font-weight: 800; color: #007aff; background: rgba(0,122,255,0.1);
-            padding: 4px 8px; border-radius: 8px; flex-shrink: 0;
+            font-size: 11px; font-weight: 800; color: #007aff; background: rgba(0,122,255,0.1);
+            padding: 3px 7px; border-radius: 7px; flex-shrink: 0;
         }
 
-        /* ==================== B. 正式導航頂部看板 (點擊直接回到自車路線，不再跳出搜尋！) ==================== */
+        /* ==================== B. 正式導航頂部看板 ==================== */
         #apple-top-banner {
             pointer-events: auto; display: none; flex-direction: column; width: 100%;
-            border-radius: 22px; overflow: hidden;
-            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px; overflow: hidden;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.16);
         }
         .banner-upper {
-            background: #2c2c2e; padding: 14px 18px;
-            display: flex; align-items: center; gap: 14px; color: #ffffff; cursor: pointer;
+            background: #28282b; padding: 12px 16px;
+            display: flex; align-items: center; gap: 12px; color: #ffffff; cursor: pointer;
             transition: background 0.15s;
         }
         .banner-upper:active { background: #3a3a3c; }
         .banner-upper.imminent-turn { background: #059669; }
         .banner-icon-wrap {
-            width: 50px; height: 50px; min-width: 50px; border-radius: 14px;
-            background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center;
+            width: 46px; height: 46px; min-width: 46px; border-radius: 13px;
+            background: rgba(255,255,255,0.14); display: flex; align-items: center; justify-content: center;
         }
-        .banner-icon-wrap svg { width: 36px; height: 36px; }
+        .banner-icon-wrap svg { width: 32px; height: 32px; }
         .banner-text-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-        .banner-dist-row { display: flex; align-items: baseline; gap: 8px; }
-        .banner-dist-big { font-size: 26px; font-weight: 900; color: #ffffff; font-variant-numeric: tabular-nums; line-height: 1; }
+        .banner-dist-row { display: flex; align-items: baseline; gap: 7px; }
+        .banner-dist-big { font-size: 24px; font-weight: 900; color: #ffffff; font-variant-numeric: tabular-nums; line-height: 1; }
         .banner-action-tag {
-            font-size: 13px; font-weight: 800; color: #ffffff; background: rgba(255, 255, 255, 0.22);
-            padding: 2px 8px; border-radius: 6px;
+            font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255, 255, 255, 0.22);
+            padding: 2px 7px; border-radius: 6px;
         }
         .banner-primary-text {
-            font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 4px;
+            font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 3px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;
         }
 
-        .turn-progress-rail { width: 100%; height: 4px; background: #1c1c1e; }
+        .turn-progress-rail { width: 100%; height: 3.5px; background: #1c1c1e; }
         #turn-progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #34c759, #ffcc00, #ff3b30); transition: width 0.25s ease; }
         
         .banner-lower {
-            background: #3a3a3c; padding: 9px 16px;
-            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            background: #363639; padding: 8px 14px;
+            display: flex; align-items: center; justify-content: space-between; gap: 6px;
         }
-        .banner-next-left { display: flex; align-items: center; gap: 10px; color: #f2f2f7; font-size: 15px; font-weight: 700; min-width: 0; flex: 1; cursor: pointer; }
-        .banner-next-left svg { width: 20px; height: 20px; fill: #f2f2f7; flex-shrink: 0; }
+        .banner-next-left { display: flex; align-items: center; gap: 8px; color: #f2f2f7; font-size: 13.5px; font-weight: 700; min-width: 0; flex: 1; cursor: pointer; }
+        .banner-next-left svg { width: 18px; height: 18px; fill: #f2f2f7; flex-shrink: 0; }
         .banner-next-street { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .banner-right-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .banner-right-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
         .toll-free-badge {
-            font-size: 11px; font-weight: 800; color: #4ade80; background: rgba(74, 222, 128, 0.16);
-            padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(74, 222, 128, 0.4);
+            font-size: 10.5px; font-weight: 800; color: #4ade80; background: rgba(74, 222, 128, 0.16);
+            padding: 2px 6px; border-radius: 5px; border: 1px solid rgba(74, 222, 128, 0.4);
         }
         .steps-list-btn {
-            font-size: 11px; font-weight: 800; color: #fff; background: rgba(255,255,255,0.2);
-            padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer;
+            font-size: 10.5px; font-weight: 800; color: #fff; background: rgba(255,255,255,0.2);
+            padding: 3px 7px; border-radius: 5px; border: none; cursor: pointer;
         }
 
         #steps-drawer {
-            display: none; flex-direction: column; max-height: 180px; overflow-y: auto;
+            display: none; flex-direction: column; max-height: 160px; overflow-y: auto;
             background: #242426; border-top: 1px solid rgba(255,255,255,0.1);
         }
         .step-row-item {
-            padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
-            display: flex; align-items: center; gap: 12px; color: #fff; font-size: 13px; cursor: pointer;
+            padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex; align-items: center; gap: 10px; color: #fff; font-size: 12px; cursor: pointer;
         }
         .step-row-item.active-step { background: rgba(0, 122, 255, 0.3); font-weight: 800; }
-        .step-row-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .step-row-icon svg { width: 18px; height: 18px; }
+        .step-row-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .step-row-icon svg { width: 16px; height: 16px; }
 
         /* ==================== C. 時速表、超速警告與彎道建議列 ==================== */
         .telemetry-row-bar {
-            display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; pointer-events: none;
+            display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; pointer-events: none;
         }
-        .telemetry-left-group { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+        .telemetry-left-group { display: flex; align-items: center; gap: 6px; pointer-events: auto; }
         
         .speed-floating-badge {
             background: #ffffff;
-            border-radius: 22px; padding: 5px 14px 5px 5px;
-            display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.16); border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 20px; padding: 4px 12px 4px 4px;
+            display: flex; align-items: center; gap: 7px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.18); border: 1px solid rgba(0,0,0,0.08);
         }
         body.dark-mode .speed-floating-badge { background: #242426; border-color: rgba(255,255,255,0.15); color: #fff; }
         .speed-floating-badge.overspeed-active {
@@ -251,32 +254,32 @@
         }
         @keyframes pulse-overspeed { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
         .limit-circle {
-            width: 38px; height: 38px; border-radius: 50%; background: #fff; border: 4px solid #ff3b30;
-            color: #1c1c1e; font-size: 15px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 3.5px solid #ff3b30;
+            color: #1c1c1e; font-size: 14px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .speed-num-box { display: flex; flex-direction: column; line-height: 1; }
-        .speed-num { font-size: 23px; font-weight: 900; color: #1c1c1e; font-variant-numeric: tabular-nums; }
+        .speed-num { font-size: 21px; font-weight: 900; color: #1c1c1e; font-variant-numeric: tabular-nums; }
         body.dark-mode .speed-num { color: #fff; }
         .speed-floating-badge.overspeed-active .speed-num,
         .speed-floating-badge.overspeed-active .speed-unit-txt { color: #ffffff !important; }
-        .speed-unit-txt { font-size: 9px; font-weight: 800; color: #8e8e93; margin-top: 1px; }
+        .speed-unit-txt { font-size: 8.5px; font-weight: 800; color: #8e8e93; margin-top: 1px; }
 
         #overspeed-pill {
             display: none; align-items: center; gap: 4px;
-            background: #ff3b30; color: #ffffff; padding: 8px 12px; border-radius: 999px;
-            font-size: 12px; font-weight: 900; box-shadow: 0 6px 18px rgba(255, 59, 48, 0.5);
+            background: #ff3b30; color: #ffffff; padding: 6px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 900; box-shadow: 0 6px 18px rgba(255, 59, 48, 0.5);
             white-space: nowrap;
         }
         #apex-pill {
             display: none; align-items: center; gap: 4px; pointer-events: auto;
             background: #ff9500; color: #ffffff;
-            padding: 8px 13px; border-radius: 999px; font-size: 12px; font-weight: 900;
+            padding: 6px 11px; border-radius: 999px; font-size: 11px; font-weight: 900;
             box-shadow: 0 6px 18px rgba(255, 149, 0, 0.4); white-space: nowrap;
         }
 
         /* ==================== D. 右下／底部欄：十字準星定位膠囊 + 縮放鈕 + 底部控制卡 ==================== */
         .bottom-right-column {
-            width: 100%; max-width: 450px; margin: 0 auto;
+            width: 100%; max-width: 440px; margin: 0 auto;
             display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
             pointer-events: none;
         }
@@ -285,120 +288,165 @@
             width: 100%; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none;
         }
 
-        /* 修復雙游標混淆：改為圓角矩形「🎯 十字準星定位膠囊」，絕不再被誤認為第二個箭頭游標！ */
         .apple-loc-fab {
-            pointer-events: auto; height: 42px; padding: 0 14px; border-radius: 14px;
+            pointer-events: auto; height: 38px; padding: 0 12px; border-radius: 12px;
             background: rgba(255, 255, 255, 0.95);
-            border: 1.5px solid rgba(0, 0, 0, 0.1); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            cursor: pointer; transition: all 0.15s; font-size: 13px; font-weight: 800; color: #1c1c1e;
+            border: 1.5px solid rgba(0, 0, 0, 0.1); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            cursor: pointer; transition: all 0.15s; font-size: 12px; font-weight: 800; color: #1c1c1e;
         }
         .apple-loc-fab.free-pan-mode {
             border-color: #007aff; background: #007aff; color: #ffffff;
-            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.45);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.5);
         }
-        body.dark-mode .apple-loc-fab { background: #2c2c2e; border-color: rgba(255,255,255,0.15); color: #ffffff; }
+        body.dark-mode .apple-loc-fab { background: #2c2c2e; border-color: rgba(255,255,255,0.16); color: #ffffff; }
         body.dark-mode .apple-loc-fab.free-pan-mode { background: #0a84ff; color: #ffffff; }
         .apple-loc-fab:active { transform: scale(0.94); }
-        .apple-loc-fab svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+        .apple-loc-fab svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
 
         .zoom-pill-group {
             pointer-events: auto; display: flex; flex-direction: column;
-            background: #ffffff; border-radius: 14px; overflow: hidden;
+            background: #ffffff; border-radius: 12px; overflow: hidden;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); border: 1px solid rgba(0,0,0,0.08);
         }
-        body.dark-mode .zoom-pill-group { background: #2c2c2e; border-color: rgba(255,255,255,0.12); }
+        body.dark-mode .zoom-pill-group { background: #2c2c2e; border-color: rgba(255,255,255,0.14); }
         .zoom-btn {
-            width: 42px; height: 40px; border: none; background: transparent;
-            color: #1c1c1e; font-size: 22px; font-weight: 700; cursor: pointer;
+            width: 38px; height: 36px; border: none; background: transparent;
+            color: #1c1c1e; font-size: 20px; font-weight: 700; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
         body.dark-mode .zoom-btn { color: #ffffff; }
-        .zoom-btn:active { background: rgba(0, 122, 255, 0.15); }
+        .zoom-btn:active { background: rgba(0, 122, 255, 0.18); }
         .zoom-divider { width: 100%; height: 1px; background: rgba(0,0,0,0.08); }
         body.dark-mode .zoom-divider { background: rgba(255,255,255,0.1); }
 
         #apple-bottom-sheet {
             pointer-events: auto; width: 100%;
             background: #ffffff;
-            border-radius: 26px; padding: 10px 16px 14px 16px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2); border: 1px solid rgba(0, 0, 0, 0.08);
-            display: flex; flex-direction: column; gap: 8px;
+            border-radius: 22px; padding: 9px 14px 12px 14px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25); border: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex; flex-direction: column; gap: 6px;
         }
-        body.dark-mode #apple-bottom-sheet { background: #242426; border-color: rgba(255, 255, 255, 0.12); }
-        .sheet-grabber { width: 34px; height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.15); margin: 0 auto; }
+        body.dark-mode #apple-bottom-sheet { background: #222225; border-color: rgba(255, 255, 255, 0.14); }
+        .sheet-grabber { width: 32px; height: 3.5px; border-radius: 2px; background: rgba(0, 0, 0, 0.15); margin: 0 auto; }
         body.dark-mode .sheet-grabber { background: rgba(255, 255, 255, 0.25); }
 
         .dest-verify-bar {
             display: flex; flex-direction: column; gap: 2px;
-            background: rgba(0, 122, 255, 0.08); border-left: 3.5px solid #007aff;
-            padding: 6px 10px; border-radius: 6px 10px 10px 6px; cursor: pointer;
+            background: rgba(0, 122, 255, 0.08); border-left: 3px solid #007aff;
+            padding: 5px 9px; border-radius: 5px 9px 9px 5px; cursor: pointer;
         }
-        body.dark-mode .dest-verify-bar { background: rgba(10, 132, 255, 0.16); }
+        body.dark-mode .dest-verify-bar { background: rgba(10, 132, 255, 0.18); }
         .dest-verify-title {
-            font-size: 13px; font-weight: 800; color: #007aff;
+            font-size: 12px; font-weight: 800; color: #007aff;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         body.dark-mode .dest-verify-title { color: #64d2ff; }
         .dest-verify-address {
-            font-size: 11px; font-weight: 600; color: #3a3a3c; line-height: 1.3;
+            font-size: 10.5px; font-weight: 600; color: #3a3a3c; line-height: 1.25;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         body.dark-mode .dest-verify-address { color: #d1d1d6; }
 
         .eta-three-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1px 0; }
         .eta-col { display: flex; flex-direction: column; align-items: center; }
-        .eta-big-num { font-size: 24px; font-weight: 900; color: #1c1c1e; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .eta-big-num { font-size: 22px; font-weight: 900; color: #1c1c1e; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
         body.dark-mode .eta-big-num { color: #ffffff; }
-        .eta-small-lbl { font-size: 11px; font-weight: 700; color: #8e8e93; margin-top: 2px; }
+        .eta-small-lbl { font-size: 10px; font-weight: 700; color: #8e8e93; margin-top: 1px; }
 
         .sheet-actions-row {
             display: grid; grid-template-columns: 1.25fr 1fr 0.85fr 0.85fr 0.95fr; gap: 5px; width: 100%;
-            padding-top: 6px; border-top: 1px solid rgba(0, 0, 0, 0.06);
+            padding-top: 5px; border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
         body.dark-mode .sheet-actions-row { border-top-color: rgba(255, 255, 255, 0.08); }
         .action-chip {
-            padding: 9px 4px; border-radius: 12px; border: none;
-            background: #f2f2f7; color: #1c1c1e; font-size: 12px; font-weight: 800;
-            display: flex; align-items: center; justify-content: center; gap: 3px;
+            padding: 8px 3px; border-radius: 10px; border: none;
+            background: #f2f2f7; color: #1c1c1e; font-size: 11.5px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center; gap: 2px;
             cursor: pointer; white-space: nowrap;
         }
-        body.dark-mode .action-chip { background: #3a3a3c; color: #ffffff; }
+        body.dark-mode .action-chip { background: #333336; color: #ffffff; }
         .action-chip:active { opacity: 0.75; transform: scale(0.96); }
         .chip-start-nav { background: #34c759 !important; color: #ffffff !important; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.35); }
         .chip-sim { background: #007aff !important; color: #ffffff !important; }
         .chip-cancel-nav { background: #ff3b30 !important; color: #ffffff !important; }
 
-        /* 唯一真正的自車游標 (帶呼吸光暈，辨識度 100%) */
+        /* 唯一真正的自車游標 */
         .apple-puck-outer {
-            width: 46px; height: 46px; border-radius: 50%;
+            width: 44px; height: 44px; border-radius: 50%;
             background: #007aff; border: 3.5px solid #ffffff;
-            box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.28), 0 6px 16px rgba(0, 0, 0, 0.45);
             display: flex; align-items: center; justify-content: center; pointer-events: none;
         }
         .apple-puck-arrow {
-            width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
             will-change: transform;
         }
 
-        /* ==================== 橫向模式 (Landscape) 零重疊完美分欄 ==================== */
+        /* ==================== 橫向模式 (Landscape) 緊湊精簡化！讓出中央最大地圖視野 ==================== */
         @media (orientation: landscape) {
             #ui-layer {
-                flex-direction: row; align-items: stretch; justify-content: space-between; gap: 16px;
-                padding-top: max(12px, env(safe-area-inset-top));
+                flex-direction: row; align-items: stretch; justify-content: space-between; gap: 10px;
+                padding-top: max(8px, env(safe-area-inset-top));
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
+                padding-left: max(10px, env(safe-area-inset-left));
+                padding-right: max(10px, env(safe-area-inset-right));
             }
+            /* 左右欄位寬度縮減為 275px (32vw)，不再霸佔螢幕！ */
             .top-left-column {
-                width: 360px; max-width: 44vw; margin: 0; justify-content: flex-start;
+                width: 275px; max-width: 32vw; margin: 0; justify-content: flex-start; gap: 6px;
             }
             .bottom-right-column {
-                width: 350px; max-width: 44vw; margin: 0; justify-content: flex-end;
+                width: 275px; max-width: 32vw; margin: 0; justify-content: flex-end; gap: 6px;
             }
+
+            /* 左上搜尋卡與導航黑卡瘦身 */
+            #search-card { padding: 8px 10px; border-radius: 16px; gap: 6px; }
+            .search-input-wrap input { padding: 7px 24px 7px 10px; font-size: 13px; border-radius: 10px; }
+            .search-submit-btn { padding: 7px 11px; font-size: 12px; border-radius: 10px; }
+            .filter-chip { padding: 4px 7px; font-size: 10px; }
+            .btn-start-go { padding: 8px 10px; font-size: 13px; border-radius: 10px; }
+            .btn-cancel-route { padding: 8px 8px; font-size: 11.5px; border-radius: 10px; }
+
+            #apple-top-banner { border-radius: 16px; }
+            .banner-upper { padding: 8px 11px; gap: 9px; }
+            .banner-icon-wrap { width: 36px; height: 36px; min-width: 36px; border-radius: 10px; }
+            .banner-icon-wrap svg { width: 24px; height: 24px; }
+            .banner-dist-big { font-size: 19px; }
+            .banner-action-tag { font-size: 10.5px; padding: 1px 5px; }
+            .banner-primary-text { font-size: 14.5px; margin-top: 2px; }
+            .banner-lower { padding: 6px 11px; }
+            .banner-next-left { font-size: 11.5px; gap: 5px; }
+            .banner-next-left svg { width: 14px; height: 14px; }
+            .toll-free-badge, .steps-list-btn { font-size: 9.5px; padding: 2px 5px; }
+
+            /* 時速表瘦身 */
+            .speed-floating-badge { padding: 3px 10px 3px 3px; border-radius: 16px; gap: 5px; }
+            .limit-circle { width: 28px; height: 28px; font-size: 12px; border-width: 3px; }
+            .speed-num { font-size: 17px; }
+            .speed-unit-txt { font-size: 7.5px; }
+
+            /* 右下定位鈕、縮放鈕與底部卡片瘦身 */
+            .apple-loc-fab { height: 32px; padding: 0 10px; font-size: 11px; border-radius: 10px; }
+            .apple-loc-fab svg { width: 14px; height: 14px; }
+            .zoom-btn { width: 32px; height: 30px; font-size: 17px; }
+            #apple-bottom-sheet { padding: 7px 10px 9px 10px; border-radius: 16px; gap: 4px; }
+            .sheet-grabber { display: none; }
+            .dest-verify-bar { padding: 4px 7px; }
+            .dest-verify-title { font-size: 11px; }
+            .dest-verify-address { font-size: 9.5px; }
+            .eta-big-num { font-size: 17px; }
+            .eta-small-lbl { font-size: 9px; margin-top: 0; }
+            .sheet-actions-row { padding-top: 4px; gap: 3.5px; }
+            .action-chip { padding: 6px 2px; font-size: 10px; border-radius: 8px; }
+
             #ar-pip-window {
                 left: 50%; right: auto; transform: translateX(-50%);
-                top: max(12px, env(safe-area-inset-top));
+                top: max(8px, env(safe-area-inset-top));
+                width: 130px; height: 84px;
             }
             #hud-toast {
-                bottom: max(20px, env(safe-area-inset-bottom));
+                bottom: max(12px, env(safe-area-inset-bottom));
             }
         }
     </style>
@@ -449,7 +497,7 @@
             <div id="suggestions-box"></div>
         </div>
 
-        <!-- B. 正式 3D 導航黑色看板 (點擊看板直接「回到已規劃路線與自車中心」，絕不更改目的地！) -->
+        <!-- B. 正式 3D 導航黑色看板 -->
         <div id="apple-top-banner">
             <div class="banner-upper" id="banner-upper-box" onclick="onBannerClickReturnToRoute()" title="點擊回到自車與導航路線">
                 <div class="banner-icon-wrap" id="banner-main-icon"></div>
@@ -496,7 +544,6 @@
     <!-- 右下／底部欄：十字準星定位鈕 + 單手縮放鈕 + 底部控制卡 -->
     <div class="bottom-right-column">
         <div class="loc-fab-row">
-            <!-- 改為「十字準星 + 文字」膠囊按鈕，徹底消除「畫面出現兩個箭頭游標」的視覺混淆！ -->
             <button class="apple-loc-fab" id="loc-fab-btn" onclick="recenterCamera()" title="鎖定自車位置並回到導航路線">
                 <svg viewBox="0 0 24 24">
                     <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
@@ -514,7 +561,6 @@
         <div id="apple-bottom-sheet">
             <div class="sheet-grabber"></div>
             
-            <!-- 點擊目的地資訊列也可直接回到導航路線中心 -->
             <div class="dest-verify-bar" id="dest-verify-bar" onclick="onBannerClickReturnToRoute()">
                 <div class="dest-verify-title" id="dest-verify-title">📍 尚未設定目的地 (請上方搜尋)</div>
                 <div class="dest-verify-address" id="dest-verify-address">🏠 正在讀取真實 GPS 所在位置...</div>
@@ -581,7 +627,6 @@ let routeSteps = [];
 let passedStepIndex = 0;
 let lastNearestRouteIdx = 0;
 
-// 偏航重算防抖與冷卻控制 (徹底解決頻繁重算問題)
 let offRouteCounter = 0;
 let isRerouting = false;
 let lastRerouteTimeMs = 0;
@@ -698,7 +743,8 @@ function getActiveNavPadding() {
     if (!isActiveNavigation) return { top: 0, bottom: 0, left: 0, right: 0 };
     const isLandscape = window.innerWidth > window.innerHeight;
     if (isLandscape) {
-        return { top: Math.round(window.innerHeight * 0.28), bottom: 0, left: 40, right: 40 };
+        // 橫向模式下左右面板已縮小，讓自車保持在螢幕正中偏下，視野最寬廣
+        return { top: Math.round(window.innerHeight * 0.24), bottom: 0, left: 0, right: 0 };
     }
     return { top: Math.round(window.innerHeight * 0.34), bottom: 0, left: 0, right: 0 };
 }
@@ -744,12 +790,11 @@ function initMapEngine() {
         fadeDuration: 0
     });
 
-    // 全畫面唯一真正的自車箭頭游標
     const puckOuter = document.createElement('div');
     puckOuter.className = 'apple-puck-outer';
     puckOuter.innerHTML = `
         <div class="apple-puck-arrow" id="puck-arrow-inner">
-            <svg viewBox="0 0 24 24" width="26" height="26">
+            <svg viewBox="0 0 24 24" width="25" height="25">
                 <path d="M12 2L4.5 20.5 12 16.8l7.5 3.7L12 2z" fill="#ffffff"/>
             </svg>
         </div>
@@ -761,6 +806,13 @@ function initMapEngine() {
 
     map.on('load', () => {
         applyAppleMapsShaderStyle();
+    });
+
+    // 關鍵修復：監聽 styledata 事件，當切換深色/淺色主題導致路線圖層被清空時，自動瞬間補回路線圖層與資料！
+    map.on('styledata', () => {
+        if (map.isStyleLoaded() && !map.getSource('main-route-source')) {
+            applyAppleMapsShaderStyle();
+        }
     });
 
     const mapCanvas = map.getCanvasContainer();
@@ -778,10 +830,9 @@ function initMapEngine() {
         isUserInteractingWithMap = false;
     });
 
-    // 關鍵修復：已有規劃好的路線 (`activeRouteCoords.length > 0`) 時，點擊地圖「絕對不會」竄改目的地！
     map.on('click', async (e) => {
         if (isActiveNavigation || activeRouteCoords.length > 0 || targetDest !== null) {
-            return; // 已有路線時，保護既有路線不被誤觸覆蓋！
+            return;
         }
         if (document.getElementById('search-card').style.display !== 'none') {
             const cLat = e.lngLat.lat, cLon = e.lngLat.lng;
@@ -800,7 +851,6 @@ function zoomMapByStep(delta) {
     map.easeTo({ zoom: map.getZoom() + delta, duration: 220 });
 }
 
-// 點擊黑色導引看板或底部地址列：直接回到已規劃好的導航路線，絕不退出或竄改地點！
 function onBannerClickReturnToRoute() {
     if (activeRouteCoords.length >= 2) {
         if (!isActiveNavigation) {
@@ -845,15 +895,18 @@ async function reverseGeocodeAddress(lat, lon) {
 }
 
 function applyAppleMapsShaderStyle() {
+    if (!map) return;
     const style = map.getStyle();
     if (!style || !style.layers) return;
 
-    map.setLight({
-        anchor: 'viewport',
-        color: '#ffffff',
-        intensity: 0.5,
-        position: [1.4, 215, 35]
-    });
+    try {
+        map.setLight({
+            anchor: 'viewport',
+            color: '#ffffff',
+            intensity: 0.5,
+            position: [1.4, 215, 35]
+        });
+    } catch (e) {}
 
     style.layers.forEach(layer => {
         const id = layer.id.toLowerCase();
@@ -880,10 +933,7 @@ function applyAppleMapsShaderStyle() {
         }
     });
 
-    const layers = map.getStyle().layers;
-    let buildingLayerId = layers.find(l => l.type === 'fill-extrusion')?.id ||
-                          layers.find(l => l.type === 'symbol' && l.layout && l.layout['text-field'])?.id;
-
+    // 將路線圖層直接掛載於最上層（不壓在深色模式的半透明圖層下），確保深色模式 100% 清晰發光！
     if (!map.getSource('alt-route-source')) {
         map.addSource('alt-route-source', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
     }
@@ -898,11 +948,11 @@ function applyAppleMapsShaderStyle() {
             'source': 'alt-route-source',
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
-                'line-color': '#7c96b8',
+                'line-color': isDarkMode ? '#475569' : '#7c96b8',
                 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 18, 12],
-                'line-opacity': 0.75
+                'line-opacity': 0.8
             }
-        }, buildingLayerId);
+        });
     }
 
     if (!map.getLayer('route-casing')) {
@@ -912,11 +962,11 @@ function applyAppleMapsShaderStyle() {
             'source': 'main-route-source',
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
-                'line-color': '#0048b3',
-                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 8, 18, 19],
+                'line-color': isDarkMode ? '#bae6fd' : '#0048b3',
+                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 8.5, 18, 20],
                 'line-opacity': 0.95
             }
-        }, buildingLayerId);
+        });
     }
 
     if (!map.getLayer('route-core')) {
@@ -927,10 +977,10 @@ function applyAppleMapsShaderStyle() {
             'layout': { 'line-join': 'round', 'line-cap': 'round' },
             'paint': {
                 'line-color': ['get', 'color'],
-                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 18, 13.5],
+                'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5.5, 18, 14],
                 'line-opacity': 1.0
             }
-        }, buildingLayerId);
+        });
     }
 
     if (!map.getSource('road-bubbles-source')) {
@@ -956,12 +1006,17 @@ function applyAppleMapsShaderStyle() {
         });
     }
 
-    if (activeRouteCoords.length > 0) renderRouteLayersOnMap();
+    // 切換深淺色底圖後，強制重繪路線與路名氣泡！
+    lastBubbleCacheKey = '';
+    if (activeRouteCoords.length > 0) {
+        renderRouteLayersOnMap(lastNearestRouteIdx);
+        updateNavigationProgress();
+    }
 }
 
 function updateWebGLRoadBubbles(primaryText, primaryLon, primaryLat, secondaryText, secLon, secLat) {
     if (!map || !map.getSource('road-bubbles-source')) return;
-    const cacheKey = `${primaryText}_${primaryLon.toFixed(4)}_${secondaryText || ''}`;
+    const cacheKey = `${primaryText}_${primaryLon.toFixed(4)}_${secondaryText || ''}_${isDarkMode}`;
     if (cacheKey === lastBubbleCacheKey) return;
     lastBubbleCacheKey = cacheKey;
 
@@ -1010,7 +1065,7 @@ async function startTurnByTurnNavigation() {
 
     isActiveNavigation = true;
     offRouteCounter = 0;
-    lastRerouteTimeMs = Date.now(); // 剛開始導航給予冷卻保護，避免起點在建築物內立刻觸發重算
+    lastRerouteTimeMs = Date.now();
     setMapFollowingState(true);
     lockInputAgainstVibration();
 
@@ -1021,11 +1076,12 @@ async function startTurnByTurnNavigation() {
     mainBtn.innerText = '🔀 換路線';
     mainBtn.className = 'action-chip';
 
+    renderRouteLayersOnMap(lastNearestRouteIdx);
     recenterCamera();
     updateNavigationProgress();
 
     if (targetDest) {
-        showToast(`🚀 導航中：${targetDest.name} (點黑色看板可隨時回到車頭)`);
+        showToast(`🚀 導航中：${targetDest.name}`);
         speakVoice(`開始導航前往${targetDest.name}，請順行出發`, 'nav_go');
     }
 }
@@ -1295,7 +1351,7 @@ function renderRouteOptionCards() {
         return;
     }
 
-    if (goBtn) goBtn.innerText = '🚀 返回/開始導航';
+    if (goBtn) goBtn.innerText = '🚀 開始導航';
     previewActionBar.style.display = 'flex';
     box.innerHTML = '';
     candidateRoutes.slice(0, 3).forEach((rt, idx) => {
@@ -1333,8 +1389,13 @@ function selectCandidateRoute(idx) {
     showToast(`✅ 已選擇「${chosen.label}」(${(chosen.distance/1000).toFixed(1)} km)`);
 }
 
+// 強化版：深色模式下採用高亮度霓虹藍 (#38bdf8)，若圖層尚未就緒自動補建！
 function renderRouteLayersOnMap(startIdx = 0) {
-    if (!map || !map.getSource('main-route-source')) return;
+    if (!map) return;
+    if (!map.getSource('main-route-source')) {
+        if (map.isStyleLoaded()) applyAppleMapsShaderStyle();
+        return;
+    }
 
     const altFeatures = [];
     if (!isActiveNavigation) {
@@ -1355,10 +1416,11 @@ function renderRouteLayersOnMap(startIdx = 0) {
         map.getSource('alt-route-source').setData({ 'type': 'FeatureCollection', 'features': altFeatures });
     }
 
+    const baseRouteBlue = isDarkMode ? '#38bdf8' : '#007aff';
     const mainFeatures = [];
     const safeStart = Math.max(0, Math.min(startIdx, activeRouteCoords.length - 2));
     if (activeRouteCoords.length >= 2) {
-        let currentColor = '#007aff';
+        let currentColor = baseRouteBlue;
         let currentSegmentCoords = [[activeRouteCoords[safeStart].lon, activeRouteCoords[safeStart].lat]];
 
         for (let i = safeStart; i < activeRouteCoords.length - 1; i++) {
@@ -1366,7 +1428,7 @@ function renderRouteLayersOnMap(startIdx = 0) {
             const pt2 = activeRouteCoords[i + 1];
             const s = pt1.sharpness || 0;
 
-            let segColor = '#007aff';
+            let segColor = baseRouteBlue;
             if (s > 0.72) segColor = '#ff3b30';
             else if (s > 0.45) segColor = '#ff9500';
 
@@ -1503,8 +1565,8 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
             const isLandscape = window.innerWidth > window.innerHeight;
             map.fitBounds(bounds, {
                 padding: isLandscape
-                    ? { top: 50, bottom: 50, left: 380, right: 370 }
-                    : { top: 250, bottom: 220, left: 45, right: 45 },
+                    ? { top: 40, bottom: 40, left: 295, right: 295 }
+                    : { top: 240, bottom: 210, left: 40, right: 40 },
                 pitch: 0,
                 bearing: 0,
                 duration: 600
@@ -1520,7 +1582,6 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
 
 async function triggerSilentReroute() {
     const now = Date.now();
-    // 嚴格冷卻時間：距離上次規劃或重算未滿 25 秒，絕不重複重算！
     if (isRerouting || !targetDest || isSimulatingDrive || (now - lastRerouteTimeMs < 25000)) return;
     isRerouting = true;
     lastRerouteTimeMs = now;
@@ -1538,7 +1599,6 @@ function updateNavigationProgress() {
         if (d < minDist) { minDist = d; nearestIdx = i; }
     }
 
-    // 關鍵修復：必須同時滿足「正在移動 (時速 >= 10 km/h)」、「GPS 精度良好 (<= 35m)」、「偏離超過 75 公尺」且「連續 6 次」才觸發重算！
     const canCheckOffRoute = isActiveNavigation && !isSimulatingDrive &&
                              currentSpeedKmh >= 10 &&
                              lastGpsAccuracy <= 35 &&
@@ -1555,7 +1615,6 @@ function updateNavigationProgress() {
         offRouteCounter = 0;
     }
 
-    // 只有當自車確實貼近路線 (< 35m) 且往前推進時，才裁剪車後走過的路線
     if (isActiveNavigation && minDist < 35 && nearestIdx > lastNearestRouteIdx && (nearestIdx - lastNearestRouteIdx) >= 3) {
         lastNearestRouteIdx = nearestIdx;
         renderRouteLayersOnMap(nearestIdx);
@@ -1676,7 +1735,7 @@ function getTurnText(mod) {
     return '直行';
 }
 
-// ==================== 5. 感測器、螢幕常亮與模擬巡航 ====================
+// ==================== 5. 感測器、深淺色切換修復與模擬巡航 ====================
 async function requestWakeLockKeepAlive() {
     try {
         if ('wakeLock' in navigator && document.visibilityState === 'visible') {
@@ -1767,16 +1826,24 @@ async function toggleARCameraPip() {
     }
 }
 
+// 關鍵修復：切換深淺色模式時，透過 style.load + idle + 定時保底三重機制，保證 100% 重繪路線與路名氣泡！
 function toggleMapTheme() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode', isDarkMode);
     document.getElementById('theme-btn').innerText = isDarkMode ? '☀️ 淺色' : '🌙 深色';
+    lastBubbleCacheKey = '';
 
     map.setStyle(isDarkMode ? MAP_STYLES.night : MAP_STYLES.day);
-    map.once('style.load', () => {
+
+    const restoreLayers = () => {
         applyAppleMapsShaderStyle();
-    });
-    showToast(isDarkMode ? '🌙 已切換為深色模式' : '☀️ 已切換為原生淺色立體模式');
+    };
+    map.once('style.load', restoreLayers);
+    map.once('idle', restoreLayers);
+    setTimeout(restoreLayers, 450);
+    setTimeout(restoreLayers, 1100);
+
+    showToast(isDarkMode ? '🌙 已切換為深色高對比路線模式' : '☀️ 已切換為淺色立體模式');
 }
 
 function getScreenOrientationAngle() {
@@ -1888,6 +1955,8 @@ function recenterCamera(isAuto = false) {
             if (d < minDist) { minDist = d; nearestIdx = i; }
         }
         headingOffsetDeg = ((activeRouteCoords[nearestIdx].heading || 0) - smoothedYaw + 360) % 360;
+        // 確保路線圖層有顯示在畫面上
+        renderRouteLayersOnMap(lastNearestRouteIdx);
     }
     const totalBearing = (smoothedYaw + headingOffsetDeg + 360) % 360;
     if (puckArrowEl) puckArrowEl.style.transform = `rotate(0deg)`;
