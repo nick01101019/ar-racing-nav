@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Apple 導航">
-    <title>Apple Maps 3D 旗艦導航 (深色路線修復 + 橫向精簡版)</title>
+    <title>Apple Maps 3D 旗艦導航 (測速照相雷達 + 機車待轉 + 智慧路況版)</title>
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -32,7 +32,7 @@
         #hud-toast {
             position: fixed; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 168px); left: 50%;
             transform: translateX(-50%) scale(0.9);
-            background: rgba(28, 28, 30, 0.92); color: #ffffff;
+            background: rgba(28, 28, 30, 0.94); color: #ffffff;
             padding: 8px 18px; border-radius: 999px; font-size: 12px; font-weight: 800;
             z-index: 10000; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
             opacity: 0; pointer-events: none; transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
@@ -65,7 +65,7 @@
 
         .top-left-column {
             width: 100%; max-width: 440px; margin: 0 auto;
-            display: flex; flex-direction: column; gap: 8px; min-height: 0;
+            display: flex; flex-direction: column; gap: 7px; min-height: 0;
             pointer-events: none;
         }
 
@@ -191,11 +191,14 @@
         }
         .banner-icon-wrap svg { width: 32px; height: 32px; }
         .banner-text-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-        .banner-dist-row { display: flex; align-items: baseline; gap: 7px; }
+        .banner-dist-row { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
         .banner-dist-big { font-size: 24px; font-weight: 900; color: #ffffff; font-variant-numeric: tabular-nums; line-height: 1; }
         .banner-action-tag {
             font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255, 255, 255, 0.22);
             padding: 2px 7px; border-radius: 6px;
+        }
+        .banner-action-tag.hook-turn-tag {
+            background: #0284c7; color: #ffffff; border: 1px solid #7dd3fc;
         }
         .banner-primary-text {
             font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 3px;
@@ -234,11 +237,11 @@
         .step-row-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .step-row-icon svg { width: 16px; height: 16px; }
 
-        /* ==================== C. 時速表、超速警告與彎道建議列 ==================== */
+        /* ==================== C. 時速表、測速照相雷達、機車待轉與彎道建議列 ==================== */
         .telemetry-row-bar {
-            display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; pointer-events: none;
+            display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; pointer-events: none; flex-wrap: wrap;
         }
-        .telemetry-left-group { display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+        .telemetry-left-group { display: flex; align-items: center; gap: 6px; pointer-events: auto; flex-wrap: wrap; }
         
         .speed-floating-badge {
             background: #ffffff;
@@ -263,6 +266,24 @@
         .speed-floating-badge.overspeed-active .speed-num,
         .speed-floating-badge.overspeed-active .speed-unit-txt { color: #ffffff !important; }
         .speed-unit-txt { font-size: 8.5px; font-weight: 800; color: #8e8e93; margin-top: 1px; }
+
+        /* 新增：📸 測速照相接近閃爍警示膠囊 */
+        #camera-alert-pill {
+            display: none; align-items: center; gap: 4px; pointer-events: auto;
+            background: linear-gradient(135deg, #dc2626, #991b1b); color: #ffffff;
+            padding: 6px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 900;
+            box-shadow: 0 6px 18px rgba(220, 38, 38, 0.6); border: 1.5px solid #fca5a5;
+            white-space: nowrap; animation: pulse-overspeed 0.55s infinite alternate;
+        }
+
+        /* 新增：🛵 台灣機車兩段式左轉/禁行預警膠囊 */
+        #two-stage-pill {
+            display: none; align-items: center; gap: 4px; pointer-events: auto;
+            background: #0284c7; color: #ffffff;
+            padding: 6px 11px; border-radius: 999px; font-size: 11px; font-weight: 900;
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45); border: 1px solid #7dd3fc;
+            white-space: nowrap;
+        }
 
         #overspeed-pill {
             display: none; align-items: center; gap: 4px;
@@ -337,11 +358,19 @@
             padding: 5px 9px; border-radius: 5px 9px 9px 5px; cursor: pointer;
         }
         body.dark-mode .dest-verify-bar { background: rgba(10, 132, 255, 0.18); }
+        .dest-verify-top-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 6px;
+        }
         .dest-verify-title {
             font-size: 12px; font-weight: 800; color: #007aff;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
         }
         body.dark-mode .dest-verify-title { color: #64d2ff; }
+        .traffic-status-pill {
+            font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 999px;
+            background: rgba(22, 163, 74, 0.14); color: #16a34a; white-space: nowrap; flex-shrink: 0;
+        }
+        body.dark-mode .traffic-status-pill { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
         .dest-verify-address {
             font-size: 10.5px; font-weight: 600; color: #3a3a3c; line-height: 1.25;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -383,7 +412,7 @@
             will-change: transform;
         }
 
-        /* ==================== 橫向模式 (Landscape) 緊湊精簡化！讓出中央最大地圖視野 ==================== */
+        /* ==================== 橫向模式 (Landscape) 緊湊精簡化 ==================== */
         @media (orientation: landscape) {
             #ui-layer {
                 flex-direction: row; align-items: stretch; justify-content: space-between; gap: 10px;
@@ -392,7 +421,6 @@
                 padding-left: max(10px, env(safe-area-inset-left));
                 padding-right: max(10px, env(safe-area-inset-right));
             }
-            /* 左右欄位寬度縮減為 275px (32vw)，不再霸佔螢幕！ */
             .top-left-column {
                 width: 275px; max-width: 32vw; margin: 0; justify-content: flex-start; gap: 6px;
             }
@@ -400,7 +428,6 @@
                 width: 275px; max-width: 32vw; margin: 0; justify-content: flex-end; gap: 6px;
             }
 
-            /* 左上搜尋卡與導航黑卡瘦身 */
             #search-card { padding: 8px 10px; border-radius: 16px; gap: 6px; }
             .search-input-wrap input { padding: 7px 24px 7px 10px; font-size: 13px; border-radius: 10px; }
             .search-submit-btn { padding: 7px 11px; font-size: 12px; border-radius: 10px; }
@@ -420,13 +447,12 @@
             .banner-next-left svg { width: 14px; height: 14px; }
             .toll-free-badge, .steps-list-btn { font-size: 9.5px; padding: 2px 5px; }
 
-            /* 時速表瘦身 */
             .speed-floating-badge { padding: 3px 10px 3px 3px; border-radius: 16px; gap: 5px; }
             .limit-circle { width: 28px; height: 28px; font-size: 12px; border-width: 3px; }
             .speed-num { font-size: 17px; }
             .speed-unit-txt { font-size: 7.5px; }
+            #camera-alert-pill, #two-stage-pill, #apex-pill { font-size: 10px; padding: 5px 8px; }
 
-            /* 右下定位鈕、縮放鈕與底部卡片瘦身 */
             .apple-loc-fab { height: 32px; padding: 0 10px; font-size: 11px; border-radius: 10px; }
             .apple-loc-fab svg { width: 14px; height: 14px; }
             .zoom-btn { width: 32px; height: 30px; font-size: 17px; }
@@ -487,7 +513,7 @@
             <!-- 多路線方案切換器 -->
             <div id="route-options-selector"></div>
 
-            <!-- 路線預覽階段專屬的「🚀 開始/繼續導航」與「✖ 取消路線」大按鈕 -->
+            <!-- 路線預覽階段專屬按鈕列 -->
             <div id="preview-action-bar">
                 <button class="btn-start-go" id="preview-go-btn" onclick="startTurnByTurnNavigation()">🚀 開始導航</button>
                 <button class="btn-cancel-route" onclick="cancelAndClearRoute()">✖ 清除路線</button>
@@ -525,7 +551,7 @@
             <div id="steps-drawer"></div>
         </div>
 
-        <!-- C. 時速表、超速閃爍警告與彎道建議列 -->
+        <!-- C. 時速表、測速照相警示、機車待轉提醒與彎道建議列 -->
         <div class="telemetry-row-bar">
             <div class="telemetry-left-group">
                 <div class="speed-floating-badge" id="speed-badge-box">
@@ -536,6 +562,8 @@
                     </div>
                 </div>
                 <div id="overspeed-pill">🚨 超速減速！</div>
+                <div id="camera-alert-pill">📸 前方 300m 測速 (限 50)</div>
+                <div id="two-stage-pill">🛵 主幹道左轉 · 注意待轉標誌</div>
             </div>
             <div id="apex-pill">⚠️ 彎道建議 30 KM/H</div>
         </div>
@@ -562,7 +590,10 @@
             <div class="sheet-grabber"></div>
             
             <div class="dest-verify-bar" id="dest-verify-bar" onclick="onBannerClickReturnToRoute()">
-                <div class="dest-verify-title" id="dest-verify-title">📍 尚未設定目的地 (請上方搜尋)</div>
+                <div class="dest-verify-top-row">
+                    <div class="dest-verify-title" id="dest-verify-title">📍 尚未設定目的地 (請上方搜尋)</div>
+                    <span class="traffic-status-pill" id="traffic-status-pill">🟢 路況順暢</span>
+                </div>
                 <div class="dest-verify-address" id="dest-verify-address">🏠 正在讀取真實 GPS 所在位置...</div>
             </div>
 
@@ -604,6 +635,7 @@ let currentRoadName = '目前位置';
 let currentOriginFullAddr = '';
 
 let currentSpeedKmh = 0;
+let activeSpeedLimit = 50; // 動態速限 (會隨測速照相桿真實速限或車種自動切換)
 let smoothedYaw = 0, headingOffsetDeg = 0, hasInitializedYaw = false;
 let lastOrientationUpdateMs = 0;
 
@@ -649,6 +681,23 @@ const MAP_STYLES = {
     night: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 };
 
+// ==================== 新增：全台高頻固定測速照相基準庫 + Overpass 動態雲端同步 ====================
+let activeSpeedCameras = [
+    { lat: 25.0528, lon: 121.3692, limit: 50, name: "龜山文化一路(華亞段)測速" },
+    { lat: 25.0392, lon: 121.3845, limit: 50, name: "龜山文化一路(體大段)測速" },
+    { lat: 25.0298, lon: 121.3982, limit: 50, name: "龜山青山路二段(陡坡區間)測速" },
+    { lat: 25.0225, lon: 121.4110, limit: 50, name: "新莊青山路一段(下坡)測速" },
+    { lat: 25.0195, lon: 121.3758, limit: 50, name: "龜山振興路(長庚段)測速" },
+    { lat: 25.0021, lon: 121.3512, limit: 60, name: "龜山萬壽路一段(台1線)測速" },
+    { lat: 24.9965, lon: 121.3280, limit: 50, name: "桃園三民路與長壽路口測速" },
+    { lat: 25.0365, lon: 121.4325, limit: 50, name: "新莊中正路(輔大段)測速" },
+    { lat: 25.0612, lon: 121.4545, limit: 50, name: "五股五工路(新北產業園區)測速" },
+    { lat: 25.0685, lon: 121.4410, limit: 60, name: "五股新五路二段測速" },
+    { lat: 25.0468, lon: 121.5322, limit: 50, name: "台北市民大道與建國南路口測速" },
+    { lat: 25.0628, lon: 121.5335, limit: 50, name: "台北建國北路與民權東路口測速" },
+    { lat: 25.0332, lon: 121.5528, limit: 50, name: "台北信義路四段與敦化南路口測速" }
+];
+
 const APPLE_SVGS = {
     departRing: `<svg viewBox="0 0 48 48" fill="none">
         <circle cx="20" cy="24" r="14" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="68 20"/>
@@ -680,7 +729,27 @@ const TAIWAN_POI_CACHE = [
     { name: "桃園火車站", aliases: ["桃園車站", "台鐵桃園站"], lat: 24.989210, lon: 121.313540, addr: "330 桃園市桃園區武陵里中正路1號" }
 ];
 
-// ==================== 1. GPU 原生高解析度路名氣泡合成器 ====================
+// ==================== 1. GPU 原生高解析度路名氣泡與測速照相圖示合成器 ====================
+function registerSpeedCameraIcon() {
+    if (!map || map.hasImage('speed-cam-icon')) return;
+    const size = 68;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(size/2, size/2, 28, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 6.5; ctx.strokeStyle = '#ff3b30'; ctx.stroke();
+
+    ctx.font = '900 24px -apple-system, sans-serif';
+    ctx.fillStyle = '#1c1c1e';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('📸', size/2, size/2 + 2);
+
+    const imgData = ctx.getImageData(0, 0, size, size);
+    map.addImage('speed-cam-icon', { width: size, height: size, data: imgData.data }, { pixelRatio: 2 });
+}
+
 function registerRoadBubbleImage(id, text, bgColor, textColor) {
     if (!map) return;
     const dpr = 2;
@@ -689,7 +758,7 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     const ctx = canvas.getContext('2d');
     ctx.font = font;
 
-    const cleanText = (text || '導航路段').slice(0, 12);
+    const cleanText = (text || '導航路段').slice(0, 14);
     const textMetrics = ctx.measureText(cleanText);
     const padX = 13 * dpr;
     const boxW = Math.ceil(textMetrics.width + padX * 2);
@@ -730,6 +799,87 @@ function registerRoadBubbleImage(id, text, bgColor, textColor) {
     map.addImage(id, { width: canvas.width, height: canvas.height, data: imgData.data }, { pixelRatio: dpr });
 }
 
+// 計算台灣即時時段路況係數 (早上/傍晚通勤尖峰與假日動態加成)
+function getTaiwanTrafficFactor() {
+    const now = new Date();
+    const day = now.getDay();
+    const hr = now.getHours() + now.getMinutes() / 60;
+    const isWeekday = (day >= 1 && day <= 5);
+
+    if (isWeekday && ((hr >= 7.5 && hr <= 9.5) || (hr >= 17.0 && hr <= 19.5))) {
+        return { factor: 1.28, label: '🟠 尖峰車多', color: '#f59e0b' };
+    } else if (!isWeekday && (hr >= 10.5 && hr <= 19.0)) {
+        return { factor: 1.15, label: '🟡 假日車流', color: '#eab308' };
+    }
+    return { factor: 1.0, label: '🟢 路況順暢', color: '#16a34a' };
+}
+
+// 判斷該左轉步驟是否為台灣機車需注意「兩段式左轉 (待轉)」的主幹道
+function checkTaiwanScooterHookTurn(step) {
+    if (!step || vehicleMode !== 'scooter') return false;
+    const mod = (step.modifier || '').toLowerCase();
+    if (!mod.includes('left')) return false;
+    const name = step.name || '';
+    if (/巷|弄/.test(name) && !/路.*段|大道/.test(name)) return false;
+    return /路|大道|段|台\d|縣道|市道|中正|中山|文化|忠孝|復興|民生|民權|三民|萬壽|五工|新五|環河|中華|市民/.test(name);
+}
+
+// 從 Overpass API 動態抓取路線沿線真實的 OSM 固定測速照相桿
+async function fetchOverpassSpeedCamerasAlongRoute(coords) {
+    if (!coords || coords.length < 2) return;
+    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    coords.forEach(c => {
+        if (c.lat < minLat) minLat = c.lat;
+        if (c.lat > maxLat) maxLat = c.lat;
+        if (c.lon < minLon) minLon = c.lon;
+        if (c.lon > maxLon) maxLon = c.lon;
+    });
+    const pad = 0.015;
+    const bbox = `${(minLat - pad).toFixed(4)},${(minLon - pad).toFixed(4)},${(maxLat + pad).toFixed(4)},${(maxLon + pad).toFixed(4)}`;
+    const query = `[out:json][timeout:5];node["highway"="speed_camera"](${bbox});out body;`;
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+    try {
+        const data = await fetchJsonWithTimeout(url, 5000);
+        if (data && Array.isArray(data.elements)) {
+            let added = 0;
+            data.elements.forEach(el => {
+                if (el.lat && el.lon) {
+                    const limit = parseInt((el.tags && el.tags.maxspeed) || '50', 10) || 50;
+                    const isDup = activeSpeedCameras.some(c => getDistanceMeters(c.lat, c.lon, el.lat, el.lon) < 80);
+                    if (!isDup) {
+                        activeSpeedCameras.push({
+                            lat: el.lat,
+                            lon: el.lon,
+                            limit: limit,
+                            name: (el.tags && el.tags.name) || `固定測速照相 (限 ${limit})`
+                        });
+                        added++;
+                    }
+                }
+            });
+            if (added > 0) renderSpeedCamerasOnMap();
+        }
+    } catch (e) {}
+}
+
+function renderSpeedCamerasOnMap() {
+    if (!map || !map.getSource('speed-cameras-source')) return;
+    registerSpeedCameraIcon();
+    const features = activeSpeedCameras.map(cam => ({
+        'type': 'Feature',
+        'properties': {
+            'limit': `📸 ${cam.limit}`,
+            'name': cam.name
+        },
+        'geometry': {
+            'type': 'Point',
+            'coordinates': [cam.lon, cam.lat]
+        }
+    }));
+    map.getSource('speed-cameras-source').setData({ 'type': 'FeatureCollection', 'features': features });
+}
+
 // ==================== 2. 地圖初始化與手勢解鎖 ====================
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('banner-main-icon').innerHTML = APPLE_SVGS.departRing;
@@ -737,13 +887,21 @@ window.addEventListener('DOMContentLoaded', () => {
     initMapEngine();
     initSensors();
     lockInputAgainstVibration();
+    updateTrafficBadgeUI();
 });
+
+function updateTrafficBadgeUI() {
+    const tf = getTaiwanTrafficFactor();
+    const pill = document.getElementById('traffic-status-pill');
+    if (pill) {
+        pill.innerText = tf.label;
+    }
+}
 
 function getActiveNavPadding() {
     if (!isActiveNavigation) return { top: 0, bottom: 0, left: 0, right: 0 };
     const isLandscape = window.innerWidth > window.innerHeight;
     if (isLandscape) {
-        // 橫向模式下左右面板已縮小，讓自車保持在螢幕正中偏下，視野最寬廣
         return { top: Math.round(window.innerHeight * 0.24), bottom: 0, left: 0, right: 0 };
     }
     return { top: Math.round(window.innerHeight * 0.34), bottom: 0, left: 0, right: 0 };
@@ -808,7 +966,6 @@ function initMapEngine() {
         applyAppleMapsShaderStyle();
     });
 
-    // 關鍵修復：監聽 styledata 事件，當切換深色/淺色主題導致路線圖層被清空時，自動瞬間補回路線圖層與資料！
     map.on('styledata', () => {
         if (map.isStyleLoaded() && !map.getSource('main-route-source')) {
             applyAppleMapsShaderStyle();
@@ -933,7 +1090,6 @@ function applyAppleMapsShaderStyle() {
         }
     });
 
-    // 將路線圖層直接掛載於最上層（不壓在深色模式的半透明圖層下），確保深色模式 100% 清晰發光！
     if (!map.getSource('alt-route-source')) {
         map.addSource('alt-route-source', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
     }
@@ -983,6 +1139,29 @@ function applyAppleMapsShaderStyle() {
         });
     }
 
+    // 新增：固定測速照相圖層
+    if (!map.getSource('speed-cameras-source')) {
+        map.addSource('speed-cameras-source', {
+            'type': 'geojson',
+            'data': { 'type': 'FeatureCollection', 'features': [] }
+        });
+    }
+
+    if (!map.getLayer('speed-cameras-layer')) {
+        registerSpeedCameraIcon();
+        map.addLayer({
+            'id': 'speed-cameras-layer',
+            'type': 'symbol',
+            'source': 'speed-cameras-source',
+            'minzoom': 12.5,
+            'layout': {
+                'icon-image': 'speed-cam-icon',
+                'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.65, 17, 1.0],
+                'icon-allow-overlap': true
+            }
+        });
+    }
+
     if (!map.getSource('road-bubbles-source')) {
         map.addSource('road-bubbles-source', {
             'type': 'geojson',
@@ -1006,7 +1185,7 @@ function applyAppleMapsShaderStyle() {
         });
     }
 
-    // 切換深淺色底圖後，強制重繪路線與路名氣泡！
+    renderSpeedCamerasOnMap();
     lastBubbleCacheKey = '';
     if (activeRouteCoords.length > 0) {
         renderRouteLayersOnMap(lastNearestRouteIdx);
@@ -1081,8 +1260,8 @@ async function startTurnByTurnNavigation() {
     updateNavigationProgress();
 
     if (targetDest) {
-        showToast(`🚀 導航中：${targetDest.name}`);
-        speakVoice(`開始導航前往${targetDest.name}，請順行出發`, 'nav_go');
+        showToast(`🚀 導航中：${targetDest.name} (已啟動測速與待轉雷達)`);
+        speakVoice(`開始導航前往${targetDest.name}，已開啟測速照相與路口待轉提示`, 'nav_go');
     }
 }
 
@@ -1116,6 +1295,8 @@ function cancelAndClearRoute() {
     document.getElementById('route-options-selector').style.display = 'none';
     document.getElementById('preview-action-bar').style.display = 'none';
     document.getElementById('apex-pill').style.display = 'none';
+    document.getElementById('camera-alert-pill').style.display = 'none';
+    document.getElementById('two-stage-pill').style.display = 'none';
     document.getElementById('search-card').style.display = 'flex';
 
     document.getElementById('eta-time').innerText = '--:--';
@@ -1164,12 +1345,14 @@ function renderStepsDrawerList() {
     routeSteps.forEach((st, idx) => {
         const d = Math.round(getDistanceMeters(userLat, userLon, st.lat, st.lon));
         const dStr = d < 1000 ? `${d}m` : `${(d/1000).toFixed(1)}km`;
+        const isHook = checkTaiwanScooterHookTurn(st);
+        const hookBadge = isHook ? `<span style="background:#0284c7;color:#fff;padding:1px 5px;border-radius:4px;font-size:10px;margin-left:4px;">🛵待轉注意</span>` : '';
         const row = document.createElement('div');
         row.className = `step-row-item ${idx === passedStepIndex ? 'active-step' : ''}`;
         row.innerHTML = `
             <div class="step-row-icon">${getTurnSvg(st.modifier)}</div>
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${idx + 1}. ${getTurnText(st.modifier)} · <b>${st.name}</b>
+                ${idx + 1}. ${getTurnText(st.modifier)} · <b>${st.name}</b>${hookBadge}
             </div>
             <div style="font-family:monospace; color:#64d2ff;">${dStr}</div>
         `;
@@ -1216,8 +1399,9 @@ function toggleVehicleMode() {
         document.getElementById('chip-avoid-highways').classList.add('active');
         document.getElementById('chip-avoid-highways').innerText = '🛣️ 避開國道/快道: 開';
     }
+    activeSpeedLimit = vehicleMode === 'scooter' ? 50 : 70;
     updateSpeedUI();
-    showToast(`已切換為 ${vehicleMode === 'scooter' ? '🛵 機車模式 (平面優先)' : '🚗 汽車模式 (速限70)'}`);
+    showToast(`已切換為 ${vehicleMode === 'scooter' ? '🛵 機車模式 (含兩段式待轉提示)' : '🚗 汽車模式 (速限70)'}`);
     if (targetDest) executeMultiRoutePlanning(targetDest.lat, targetDest.lon, targetDest.name, targetDest.addr);
 }
 
@@ -1351,13 +1535,14 @@ function renderRouteOptionCards() {
         return;
     }
 
+    const tf = getTaiwanTrafficFactor();
     if (goBtn) goBtn.innerText = '🚀 開始導航';
     previewActionBar.style.display = 'flex';
     box.innerHTML = '';
     candidateRoutes.slice(0, 3).forEach((rt, idx) => {
         const card = document.createElement('div');
         card.className = `route-opt-card ${idx === selectedRouteIndex ? 'selected' : ''}`;
-        const min = Math.max(1, Math.round(rt.duration / 60));
+        const min = Math.max(1, Math.round((rt.duration * tf.factor) / 60));
         const km = (rt.distance / 1000).toFixed(1);
         card.innerHTML = `
             <div class="opt-tag">${rt.label}</div>
@@ -1389,7 +1574,6 @@ function selectCandidateRoute(idx) {
     showToast(`✅ 已選擇「${chosen.label}」(${(chosen.distance/1000).toFixed(1)} km)`);
 }
 
-// 強化版：深色模式下採用高亮度霓虹藍 (#38bdf8)，若圖層尚未就緒自動補建！
 function renderRouteLayersOnMap(startIdx = 0) {
     if (!map) return;
     if (!map.getSource('main-route-source')) {
@@ -1457,7 +1641,7 @@ function renderRouteLayersOnMap(startIdx = 0) {
     map.getSource('main-route-source').setData({ 'type': 'FeatureCollection', 'features': mainFeatures });
 }
 
-// ==================== 4. 路線搜尋預覽與防誤判偏航重算 ====================
+// ==================== 4. 路線搜尋預覽、測速照相雷達與兩段式待轉偵測 ====================
 function showSearchOverlay() {
     if (isSimulatingDrive) stopSimulationDrive();
     isActiveNavigation = false;
@@ -1522,8 +1706,9 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
 
     targetDest = { lat: destLat, lon: destLon, name: labelName, addr: fullAddressText };
 
-    document.getElementById('dest-verify-title').innerText = `📍 目的地：${labelName}`;
-    document.getElementById('dest-verify-address').innerText = `🏠 確認地址：${fullAddressText}`;
+    document.getElementById('dest-verify-title').innerText = `📍 ${labelName}`;
+    document.getElementById('dest-verify-address').innerText = `🏠 ${fullAddressText}`;
+    updateTrafficBadgeUI();
 
     if (destMarker) destMarker.remove();
     const destEl = document.createElement('div');
@@ -1543,6 +1728,10 @@ async function executeMultiRoutePlanning(destLat, destLon, labelName, fullAddres
             lastNearestRouteIdx = 0;
             offRouteCounter = 0;
             lastRerouteTimeMs = Date.now();
+
+            // 非同步向 Overpass 查詢沿線最新測速照相桿
+            fetchOverpassSpeedCamerasAlongRoute(primary.rawCoords);
+            renderSpeedCamerasOnMap();
 
             if (silentReroute) {
                 renderRouteLayersOnMap(0);
@@ -1590,7 +1779,38 @@ async function triggerSilentReroute() {
     isRerouting = false;
 }
 
+// 偵測前方 450m 內的測速照相桿並動態更新速限與語音警報
+function checkUpcomingSpeedCameras() {
+    const camPill = document.getElementById('camera-alert-pill');
+    let nearestCam = null, minCamDist = Infinity;
+
+    for (let i = 0; i < activeSpeedCameras.length; i++) {
+        const cam = activeSpeedCameras[i];
+        const d = getDistanceMeters(userLat, userLon, cam.lat, cam.lon);
+        if (d < minCamDist) {
+            minCamDist = d;
+            nearestCam = cam;
+        }
+    }
+
+    if (nearestCam && minCamDist <= 450) {
+        activeSpeedLimit = nearestCam.limit || (vehicleMode === 'scooter' ? 50 : 70);
+        const distRound = Math.round(minCamDist / 10) * 10;
+        camPill.style.display = 'flex';
+        camPill.innerText = `📸 前方 ${distRound}m 測速 (限 ${activeSpeedLimit})`;
+
+        if ((isActiveNavigation || isSimulatingDrive) && minCamDist <= 400 && minCamDist >= 260) {
+            speakVoice(`注意，前方 ${distRound} 公尺有測速照相，速限 ${activeSpeedLimit} 公里`, `cam_${nearestCam.lat.toFixed(3)}`);
+        }
+    } else {
+        activeSpeedLimit = vehicleMode === 'scooter' ? 50 : 70;
+        camPill.style.display = 'none';
+    }
+    updateSpeedUI();
+}
+
 function updateNavigationProgress() {
+    checkUpcomingSpeedCameras();
     if (activeRouteCoords.length < 2) return;
 
     let nearestIdx = 0, minDist = Infinity;
@@ -1644,6 +1864,7 @@ function updateNavigationProgress() {
     const currentStep = routeSteps[passedStepIndex];
     const nextStep = routeSteps[passedStepIndex + 1];
     const upperBox = document.getElementById('banner-upper-box');
+    const twoStagePill = document.getElementById('two-stage-pill');
 
     if (currentStep) {
         const activeTurnStep = (currentStep.modifier === 'depart' && nextStep) ? nextStep : currentStep;
@@ -1651,12 +1872,23 @@ function updateNavigationProgress() {
 
         const distToTurn = Math.round(getDistanceMeters(userLat, userLon, activeTurnStep.lat, activeTurnStep.lon));
         const distText = distToTurn < 1000 ? `${distToTurn} 公尺` : `${(distToTurn/1000).toFixed(1)} 公里`;
-        const actionLabel = getTurnText(activeTurnStep.modifier);
+        const isHookTurn = checkTaiwanScooterHookTurn(activeTurnStep);
+        const actionLabel = isHookTurn ? '左轉 (注意待轉)' : getTurnText(activeTurnStep.modifier);
+
+        const tagEl = document.getElementById('banner-action-tag');
+        tagEl.innerText = actionLabel;
+        tagEl.classList.toggle('hook-turn-tag', isHookTurn);
 
         document.getElementById('banner-main-icon').innerHTML = getTurnSvg(activeTurnStep.modifier);
         document.getElementById('banner-dist-big').innerText = distText;
-        document.getElementById('banner-action-tag').innerText = actionLabel;
         document.getElementById('banner-main-text').innerText = `進入 ${activeTurnStep.name}`;
+
+        // 台灣機車兩段式左轉膠囊顯示控制
+        if (isHookTurn && distToTurn <= 220 && (isActiveNavigation || isSimulatingDrive)) {
+            twoStagePill.style.display = 'flex';
+        } else {
+            twoStagePill.style.display = 'none';
+        }
 
         if (distToTurn <= 45) {
             upperBox.classList.add('imminent-turn');
@@ -1666,25 +1898,28 @@ function updateNavigationProgress() {
         const pct = distToTurn <= 200 ? Math.min(100, Math.round((1 - distToTurn / 200) * 100)) : 0;
         document.getElementById('turn-progress-fill').style.width = `${pct}%`;
 
+        const bubblePrimaryLabel = isHookTurn ? `🛵待轉 · ${activeTurnStep.name}` : activeTurnStep.name;
+
         if (followStep) {
             document.getElementById('banner-sub-icon').innerHTML = getTurnSvg(followStep.modifier);
             document.getElementById('banner-sub-text').innerText = `接著 ${getTurnText(followStep.modifier)} · ${followStep.name}`;
             if (isActiveNavigation) {
-                updateWebGLRoadBubbles(activeTurnStep.name, activeTurnStep.lon, activeTurnStep.lat, followStep.name, followStep.lon, followStep.lat);
+                updateWebGLRoadBubbles(bubblePrimaryLabel, activeTurnStep.lon, activeTurnStep.lat, followStep.name, followStep.lon, followStep.lat);
             }
         } else {
             document.getElementById('banner-sub-icon').innerHTML = APPLE_SVGS.straight;
             document.getElementById('banner-sub-text').innerText = `接著前往 · ${targetDest ? targetDest.name : '終點'}`;
             if (isActiveNavigation) {
-                updateWebGLRoadBubbles(activeTurnStep.name, activeTurnStep.lon, activeTurnStep.lat, null, 0, 0);
+                updateWebGLRoadBubbles(bubblePrimaryLabel, activeTurnStep.lon, activeTurnStep.lat, null, 0, 0);
             }
         }
 
         if (isActiveNavigation) {
+            const voiceHookNote = isHookTurn ? '，機車請注意兩段式待轉標誌' : '';
             if (distToTurn <= 160 && distToTurn >= 115) {
-                speakVoice(`前方 150 公尺，準備${actionLabel}進入${activeTurnStep.name}`, `v_${passedStepIndex}_150`);
+                speakVoice(`前方 150 公尺，準備${getTurnText(activeTurnStep.modifier)}進入${activeTurnStep.name}${voiceHookNote}`, `v_${passedStepIndex}_150`);
             } else if (distToTurn <= 42 && distToTurn >= 18) {
-                speakVoice(`請立即${actionLabel}進入${activeTurnStep.name}`, `v_${passedStepIndex}_35`);
+                speakVoice(`請${getTurnText(activeTurnStep.modifier)}進入${activeTurnStep.name}${voiceHookNote}`, `v_${passedStepIndex}_35`);
             }
         }
     }
@@ -1707,10 +1942,12 @@ function updateNavigationProgress() {
         apexPill.style.display = 'none';
     }
 
+    // 結合台灣即時時段路況係數計算預估抵達時間 (ETA)
+    const tf = getTaiwanTrafficFactor();
     const remRatio = Math.max(0, 1 - nearestIdx / Math.max(1, activeRouteCoords.length));
     const remMeters = totalRouteMeters * remRatio;
-    const avgMps = Math.max(8.5, currentSpeedKmh / 3.6);
-    const remMinutes = Math.max(1, Math.round((remMeters / avgMps) / 60));
+    const baseDurationSec = candidateRoutes[selectedRouteIndex] ? candidateRoutes[selectedRouteIndex].duration : (totalRouteMeters / 10.0);
+    const remMinutes = Math.max(1, Math.round(((baseDurationSec * remRatio) * tf.factor) / 60));
     const etaDate = new Date(Date.now() + remMinutes * 60000);
 
     document.getElementById('eta-time').innerText = `${String(etaDate.getHours()).padStart(2, '0')}:${String(etaDate.getMinutes()).padStart(2, '0')}`;
@@ -1735,7 +1972,7 @@ function getTurnText(mod) {
     return '直行';
 }
 
-// ==================== 5. 感測器、深淺色切換修復與模擬巡航 ====================
+// ==================== 5. 感測器、深淺色切換與模擬巡航 ====================
 async function requestWakeLockKeepAlive() {
     try {
         if ('wakeLock' in navigator && document.visibilityState === 'visible') {
@@ -1826,7 +2063,6 @@ async function toggleARCameraPip() {
     }
 }
 
-// 關鍵修復：切換深淺色模式時，透過 style.load + idle + 定時保底三重機制，保證 100% 重繪路線與路名氣泡！
 function toggleMapTheme() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode', isDarkMode);
@@ -1921,6 +2157,8 @@ function handleGPS(pos) {
     }
     if (activeRouteCoords.length > 1) {
         updateNavigationProgress();
+    } else {
+        checkUpcomingSpeedCameras();
     }
 }
 
@@ -1931,10 +2169,9 @@ function updateSpeedUI() {
     const spd = Math.round(currentSpeedKmh);
     speedEl.innerText = spd;
 
-    const limit = vehicleMode === 'scooter' ? 50 : 70;
-    document.getElementById('speed-limit-val').innerText = limit;
+    document.getElementById('speed-limit-val').innerText = activeSpeedLimit;
 
-    if (spd >= limit) {
+    if (spd >= activeSpeedLimit) {
         badgeBox.classList.add('overspeed-active');
         overspeedPill.style.display = 'flex';
     } else {
@@ -1955,7 +2192,6 @@ function recenterCamera(isAuto = false) {
             if (d < minDist) { minDist = d; nearestIdx = i; }
         }
         headingOffsetDeg = ((activeRouteCoords[nearestIdx].heading || 0) - smoothedYaw + 360) % 360;
-        // 確保路線圖層有顯示在畫面上
         renderRouteLayersOnMap(lastNearestRouteIdx);
     }
     const totalBearing = (smoothedYaw + headingOffsetDeg + 360) % 360;
@@ -1997,7 +2233,7 @@ function startSimulationDrive() {
 
     const btn = document.getElementById('sim-btn');
     btn.innerText = '⏹ 停止';
-    showToast('🏎️ 已啟動模擬巡航 (可隨時雙指縮放或拖曳地圖)');
+    showToast('🏎️ 已啟動模擬巡航 (含測速照相與兩段式待轉預警)');
 
     function simStep(now) {
         if (!isSimulatingDrive) return;
@@ -2014,9 +2250,8 @@ function startSimulationDrive() {
         const pt2 = activeRouteCoords[idx + 1];
         const frac = simFloatIndex - idx;
 
-        const targetSimSpeed = (pt1.sharpness > 0.42) ? 30 : 54;
+        const targetSimSpeed = (pt1.sharpness > 0.42) ? 30 : 52;
         currentSpeedKmh += (targetSimSpeed - currentSpeedKmh) * 0.1;
-        updateSpeedUI();
 
         userLat = pt1.lat + (pt2.lat - pt1.lat) * frac;
         userLon = pt1.lon + (pt2.lon - pt1.lon) * frac;
@@ -2057,6 +2292,7 @@ function stopSimulationDrive() {
 
     const btn = document.getElementById('sim-btn');
     btn.innerText = '▶ 模擬巡航';
+    document.getElementById('two-stage-pill').style.display = 'none';
 
     if (preSimSnapshot) {
         userLat = preSimSnapshot.lat;
